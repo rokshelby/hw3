@@ -1,0 +1,15 @@
+program 3
+
+the goal of the hw will become familiar with semaphores in unix
+
+it will provide a static linked library
+
+the program will compute the summation of n integers in two different ways
+
+the at least 64 integers will be created by the program ranging from 0, 256.
+
+to run the program you will type the command 'master' then read from output file
+
+'adder_log'
+
+
