@@ -58,16 +58,17 @@ void PerformSummation(int numElem, int shared_id)
 	int pid;
 	int size = numElem;
 	int numProcesses = 0;
+	int maxAllowed = 2;
 	int intExec = 0;
 	char ** argToPass = malloc(sizeof(char *) * 2);
-	for(i = 0; i < 3; i++)
+	for(i = 0; i < 4; i++)
 		argToPass[i] = malloc(sizeof(int) * 8);
 
 	for(i = 0; i < (size/2)-1; i++)
 	{
-		for(j = 0; j < size; j = j + inc);
+		for(j = 0; j < size; j = j + inc)
 		{
-			fflush(stdout);
+			printf("count of J: %d\n", j);
 			pid = fork();
 			if(pid < 0)
 			{
@@ -84,8 +85,9 @@ void PerformSummation(int numElem, int shared_id)
 				strcpy(argToPass[1], GetString(strlen(st), st));
 				sprintf(st, "%d", shared_id);
 				strcpy(argToPass[2], GetString(strlen(st), st));
+				argToPass[3] = NULL;
 				fflush(stdout);	
-				intExec = execv("/classes/OS/shelby/shelby/shelby.3/bin_adder",argToPass);
+				intExec = execv("bin_adder",argToPass);
 				
 				printf("Exec %d\n", intExec);
 				exit(0);
