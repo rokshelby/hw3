@@ -14,8 +14,10 @@
 	extern int arr;
 	void sig_handler(int);
 	void GenerateRandomNumbers(int);
+	void PerformSummation();
 	int ReadInputFile();
 	int GetInputPlaceInSharedMem(int);
+	char * GetString(int, char*);	
 	const char inputFile[] = "./InputNumberFile.txt";
 	const char shared_key[] = "./master.c";
 	const int shared_int = 63;

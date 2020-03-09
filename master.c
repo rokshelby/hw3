@@ -15,7 +15,8 @@
 int main(int argc, char ** argv)
 {
 
-	int numElem = 64;
+	int numElem = 8;
+	//	int numElem = 64
 	int getNumberOfPairs;
 	int shared_id = 0;
 	
@@ -53,15 +54,20 @@ void PerformSummation(int numElem, int shared_id)
 
 	int j = 0;
 	int i = 0;
-	int num = numElem;
 	int inc =2;
-	int * arr;
 	int pid;
+	int size = numElem;
+	int numProcesses = 0;
+	int intExec = 0;
+	char ** argToPass = malloc(sizeof(char *) * 2);
+	for(i = 0; i < 3; i++)
+		argToPass[i] = malloc(sizeof(int) * 8);
+
 	for(i = 0; i < (size/2)-1; i++)
 	{
 		for(j = 0; j < size; j = j + inc);
 		{
-
+			fflush(stdout);
 			pid = fork();
 			if(pid < 0)
 			{
@@ -69,22 +75,73 @@ void PerformSummation(int numElem, int shared_id)
 			}
 			else if(pid == 0)
 			{
-				printf("Creationg of child process was successful %d\n", getpid());
+				printf("Creation of child process was successful %d\n", getpid());
 				char * st;
 				st = (char*)malloc(sizeof(char) * 10);
-				sprintf(st, "%d", count);
-				strcpy(arg
-				execv("bit_adder", 
+				sprintf(st, "%d", j);
+				strcpy(argToPass[0], GetString(strlen(st), st));
+				sprintf(st, "%d", size);
+				strcpy(argToPass[1], GetString(strlen(st), st));
+				sprintf(st, "%d", shared_id);
+				strcpy(argToPass[2], GetString(strlen(st), st));
+				fflush(stdout);	
+				intExec = execv("/classes/OS/shelby/shelby/shelby.3/bin_adder",argToPass);
+				
+				printf("Exec %d\n", intExec);
+				exit(0);
 
 			}
-			
-
-			arr = addArray(arr, j, inc);
+			else if(pid > 0)
+			{
+				printf("Parent sent off child to add two numbers %d and %d\n", pid, getpid());
+				numProcesses++;
+			}
 
 		}
 		inc = inc * 2;
 	}
+	int pida;
+	int status;
+	while(numProcesses > 0)
+	{
+		pida = waitpid(pida, &status, WNOHANG);
+		if(pida == -1)
+		{
+			//perror
+		}	
+		else if(pida == 0)
+		{
+			//child still running
+		}
+		else if(pida > 0)
+		{
+			printf("child is finished %d\n", pida);
+			numProcesses--;
+		}
+		
 
+	}	
+
+}
+
+void sig_handler(int sig)
+{
+	exit(0);
+}
+
+
+
+char * GetString(int size, char * str)
+{
+        int i = 0;
+        char * returnStr = malloc(sizeof(char) * strlen(str));
+	//printf("%s my string \n",str);
+        for(i = 0; i < strlen(str); i++)
+        {
+        	returnStr[i] = str[i];
+        }
+        returnStr[strlen(str)] = 0;
+        return returnStr;
 }
 
 
