@@ -1,19 +1,21 @@
-#include "myGlobal.h"
+//#include "myGlobal.h"
+#include <stdlib.h>
+#include <stdio.h>
 
-
-
-
+int getSharedID();
+void printSharedInt();
+extern int rakeem;
 int main(int argc, char ** argv)
 {
 	
 	int i = 0;
-	fflush(stdout);
-	fprintf(stderr,"The Arguments \n");
+
+	printf("The Arguments \n");
 	for(i = 0; i < argc; i++)
 	{
-		fprintf(stderr,"%s ", argv[i]);
+		printf("%s ", argv[i]);
 	}
-	fprintf(stderr,"\n");
+	printf("\n");
 
 
 
@@ -24,11 +26,9 @@ int main(int argc, char ** argv)
 	fprintf(fptr, "%d", 63);
 	fclose(fptr);
 
-
-
-
-
-
-
+	printf("shared id %d\n", getSharedID());
+	printf("shared_id %d\n", rakeem);
+	printSharedInt();
 	return 0;
 }
+

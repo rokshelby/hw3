@@ -10,16 +10,39 @@
 //if the program isn't finished before 100 seconds the program will stop.
 // 
 
-#include "myGlobal.h"
+//#include "myGlobal.h"
 
+#include <stdio.h>
+#include <string.h>
+#include <stdlib.h>
+#include <sys/ipc.h>
+#include <sys/types.h>
+#include <unistd.h>
+#include <sys/shm.h>
+#include <sys/wait.h>
+#include <signal.h>
+#include <time.h>
+#include <sys/time.h>
+
+void setSharedID();
+int getSharedID();
+char* getSharedKey();
+int getSharedInt();
+char * getSharedInputFile();
+void GenerateRandomNumbers(int);
+int ReadInputFile();
+int GetInputPlaceInSharedMem(int);
+void PerformSummation(int, int);
+char * GetString(int, char*);
+int master;
 int main(int argc, char ** argv)
 {
 
 	int numElem = 8;
 	//	int numElem = 64
 	int getNumberOfPairs;
-	int shared_id = 0;
-	
+	int shared_id = 0;	
+	int sharedID = 9393;
 	//get the number of ints;
 	if(argc > 1)
 	{
@@ -44,31 +67,38 @@ int main(int argc, char ** argv)
 	PerformSummation(numElem, shared_id);
 
 	if(shmctl(shared_id, IPC_RMID, NULL) < 0)
-		fprintf(stderr, "coult not deallocate shraed memory: remove it manually\n");
+		fprintf(stderr, "coult not deallocate shared memory: remove it manually\n");
 	
 	return 0;
 }
 
 void PerformSummation(int numElem, int shared_id)
 {
-
+	int k = 0;
 	int j = 0;
 	int i = 0;
 	int inc =2;
 	int pid;
 	int size = numElem;
-	int numProcesses = 0;
 	int maxAllowed = 2;
+	int aliveChilds = 0;
 	int intExec = 0;
+	int pida = 0;
+	int status = 0;
+
+	printf("idea %d\n", getSharedID());
 	char ** argToPass = malloc(sizeof(char *) * 2);
 	for(i = 0; i < 4; i++)
 		argToPass[i] = malloc(sizeof(int) * 8);
-
-	for(i = 0; i < (size/2)-1; i++)
+	i = 0;
+	//for(i = 0; i < (size/2)-1; i++)
+	do
 	{
-		for(j = 0; j < size; j = j + inc)
+	
+	
+		//for(j = 0; j < size; j = j + inc)
+		while(j < size && maxAllowed > aliveChilds && inc != size)
 		{
-			printf("count of J: %d\n", j);
 			pid = fork();
 			if(pid < 0)
 			{
@@ -95,56 +125,47 @@ void PerformSummation(int numElem, int shared_id)
 			}
 			else if(pid > 0)
 			{
-				printf("Parent sent off child to add two numbers %d and %d\n", pid, getpid());
-				numProcesses++;
+				printf("Parent sent off child to add two numbers %d\n", pid);
+				aliveChilds++;
+				j  = j + inc;
+				printf("increment %d\n", inc);
 			}
+			
+		}
+	
+	
+		for(k = 0; k < aliveChilds; k++)	
+		{
+			pida = waitpid(pida, &status, WNOHANG);
+			if(pida == -1)
+			{
+				//perror
+			}		
+			else if(pida == 0)
+			{
+				//child still running
+			}
+			else if(pida > 0)
+			{
+				printf("child is finished %d\n", pida);
+				aliveChilds--;
+			}
+		}
+
+		if(j == size)
+		{
+			i++;
+			j = 0;
+			inc = inc * 2;
 
 		}
-		inc = inc * 2;
-	}
-	int pida;
-	int status;
-	while(numProcesses > 0)
-	{
-		pida = waitpid(pida, &status, WNOHANG);
-		if(pida == -1)
-		{
-			//perror
-		}	
-		else if(pida == 0)
-		{
-			//child still running
-		}
-		else if(pida > 0)
-		{
-			printf("child is finished %d\n", pida);
-			numProcesses--;
-		}
-		
 
-	}	
+
+			
+	}while(size/2-1 > i && aliveChilds > 0);
 
 }
 
-void sig_handler(int sig)
-{
-	exit(0);
-}
-
-
-
-char * GetString(int size, char * str)
-{
-        int i = 0;
-        char * returnStr = malloc(sizeof(char) * strlen(str));
-	//printf("%s my string \n",str);
-        for(i = 0; i < strlen(str); i++)
-        {
-        	returnStr[i] = str[i];
-        }
-        returnStr[strlen(str)] = 0;
-        return returnStr;
-}
 
 
 int GetInputPlaceInSharedMem(int num)
@@ -152,13 +173,13 @@ int GetInputPlaceInSharedMem(int num)
 	int ret = 0;
 	int i = 0;
 	int  intVar = 0;
-	key_t key = ftok(shared_key, shared_int);
+	key_t key = ftok(getSharedKey(), getSharedInt());
 	int shmid = shmget(key, (num * 2) * sizeof(int), 0666|IPC_CREAT);
 	printf("print shmid %d\n", shmid);
 	int * arr = (int*) shmat(shmid,  NULL ,0);
 	arr[0] = 0;
 	FILE * fptr;
-	if((fptr = fopen(inputFile, "r")) == NULL)
+	if((fptr = fopen(getSharedInputFile(), "r")) == NULL)
 	{
 		perror("file problems\n");
 		exit(1);
@@ -183,7 +204,7 @@ int ReadInputFile()
 	int total = 0;
 	int ret = 0;
 	FILE * fptr;
-	if((fptr = fopen(inputFile, "r")) == NULL)
+	if((fptr = fopen(getSharedInputFile(), "r")) == NULL)
 	{
 		perror("file problems");
 		exit(1);
@@ -210,7 +231,7 @@ void GenerateRandomNumbers(int num)
 	int total = 0;
 	int tempInt = 0;
 	FILE * fptr;
-	fptr = fopen(inputFile,"w");
+	fptr = fopen(getSharedInputFile(),"w");
 	if(fptr == NULL)
 	{
 		perror("file problems\n");

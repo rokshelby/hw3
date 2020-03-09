@@ -11,15 +11,16 @@
 #include <signal.h>
 #include <time.h>
 #include <sys/time.h>	
-	extern int arr;
 	void sig_handler(int);
 	void GenerateRandomNumbers(int);
 	void PerformSummation();
+	void printSharedInt();
 	int ReadInputFile();
 	int GetInputPlaceInSharedMem(int);
 	char * GetString(int, char*);	
+	extern int arr;
+
 	const char inputFile[] = "./InputNumberFile.txt";
-	const char shared_key[] = "./master.c";
-	const int shared_int = 63;
-	
+	const char sharedKey[] = "./master.c";
+	const int sharedInt = 63;
 #endif	
