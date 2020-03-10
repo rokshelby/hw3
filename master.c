@@ -21,9 +21,8 @@ char * getSharedInputFile();
 void GenerateRandomNumbers(int);
 int ReadInputFile();
 int GetInputPlaceInSharedMem(int);
-void PerformSummation(int, int);
+void PerformSummation(int, int, int);
 char * GetString(int, char*);
-
 int main(int argc, char ** argv)
 {
 
@@ -31,7 +30,13 @@ int main(int argc, char ** argv)
 	//	int numElem = 64
 	int getNumberOfPairs;
 	int shared_id = 0;	
+	int method2Shared_id;
+	sem_t * mutex = sem_open(semaphoreName, O_CREAT|O_EXCL, 0666, 63);
 
+	//clear the output file
+	FILE * fptr;	
+	fptr = 	fopen(outputFile, "w");
+	fclose(fptr);
 	//get the number of ints;
 	if(argc > 1)
 	{
@@ -46,15 +51,16 @@ int main(int argc, char ** argv)
 		
 	}
 	
-	printf("number of elements %d\n", numElem);
+	//printf("number of elements %d\n", numElem);
+	
 	GenerateRandomNumbers(numElem);
 	getNumberOfPairs = ReadInputFile();
-	shared_id = GetInputPlaceInSharedMem(getNumberOfPairs/2);
 
-	printf("print shared_id %d\n", shared_id);
+	//printf("print shared_id %d\n", shared_id);
         
-	
-	PerformSummation(numElem, shared_id);
+	printf("Start Method1\n");
+	shared_id = GetInputPlaceInSharedMem(getNumberOfPairs/2);
+	PerformSummation(numElem, shared_id, 2); //method 1;
 	int * arr = (int*)shmat(shared_id, NULL, 0);
 	int x = 0;
 	for(x = 0; x < 8; x++)
@@ -62,19 +68,39 @@ int main(int argc, char ** argv)
 		printf("%d ", arr[x]);
 	}
 	printf("\n");
+	
+	printf("Start Method2\n");
+	//shared_id = getInputPlaceInSharedMem(getNumberOfPairs/2);
+	//PerformSummation(numElem, shared_id, 2
+	printf("new size is %f\n", ceil( log10(getNumberOfPairs) / log10(2)  ));
+
+	int test = ceil(log10(getNumberOfPairs)/log10(2));
+	
+	printf("The integer is %d\n", test);
 	shmdt(arr);
+
+
+
+
+
+
+
+
+
+
+
 	if(shmctl(shared_id, IPC_RMID, NULL) < 0)
 		fprintf(stderr, "coult not deallocate shared memory: remove it manually\n");
 	
+	sem_destroy(mutex);	
 	return 0;
 }
 
-void PerformSummation(int numElem, int shared_id)
+void PerformSummation(int numElem, int shared_id, int addSeq)
 {
 	int k = 0;
 	int j = 0;
 	int i = 0;
-	int inc =2;
 	int pid;
 	int size = numElem;
 	int maxAllowed = 2;
@@ -82,7 +108,7 @@ void PerformSummation(int numElem, int shared_id)
 	int intExec = 0;
 	int pida = 0;
 	int status = 0;
-	
+	int toAdd = addSeq;
 	char ** argToPass = malloc(sizeof(char *) * 2);
 	for(i = 0; i < 4; i++)
 		argToPass[i] = malloc(sizeof(int) * 8);
@@ -90,10 +116,8 @@ void PerformSummation(int numElem, int shared_id)
 	//for(i = 0; i < (size/2)-1; i++)
 	do
 	{
-	
-	
 		//for(j = 0; j < size; j = j + inc)
-		while(j < size && maxAllowed > aliveChilds && inc != size)
+		while(j < size/2 && maxAllowed > aliveChilds)
 		{
 			pid = fork();
 			if(pid < 0)
@@ -107,24 +131,23 @@ void PerformSummation(int numElem, int shared_id)
 				st = (char*)malloc(sizeof(char) * 10);
 				sprintf(st, "%d", j);
 				strcpy(argToPass[0], GetString(strlen(st), st));
-				sprintf(st, "%d", inc/2);
+				sprintf(st, "%d", toAdd);
 				strcpy(argToPass[1], GetString(strlen(st), st));
 				sprintf(st, "%d", shared_id);
 				strcpy(argToPass[2], GetString(strlen(st), st));
 				argToPass[3] = NULL;
-				
 				intExec = execv("bin_adder",argToPass);
-				
 				printf("Exec %d\n", intExec);
 				exit(0);
 
 			}
 			else if(pid > 0)
 			{
-				printf("Parent sent off child to add two numbers %d\n", pid);
+
 				aliveChilds++;
-				j  = j + inc;
-				printf("increment %d\n", inc);
+			
+				printf("Parent sent off child to add two numbers %d and J is %d\n", pid, j);
+				j=j+1;
 			}
 			
 		}
@@ -148,17 +171,15 @@ void PerformSummation(int numElem, int shared_id)
 			}
 		}
 
-		if(j == size)
+		if(j == size/2)
 		{
-			i++;
+			size = size / 2;
 			j = 0;
-			inc = inc * 2;
-
 		}
 
-
+		
 			
-	}while(size/2 > i && aliveChilds > 0);
+	}while(aliveChilds > 0 && size >= 0);
 
 }
 
@@ -185,7 +206,9 @@ int GetInputPlaceInSharedMem(int num)
 	{
 		arr[i] = intVar;
 		ret = fscanf(fptr, "%d", &intVar);
+		printf("%d ", arr[i]);
 	}
+	printf("\n");
 	fclose(fptr);
 	shmdt(arr);
 	return shmid;

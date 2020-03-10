@@ -9,12 +9,10 @@ OBJS1 = bin_adder.o
 all : $(TARGET) $(TARGET1)
 
 $(TARGET1): $(OBJS1)
-	$(CC) -o $@ $(OBJS1)
+	$(CC) -o $@ $(OBJS1) -lpthread
 
 $(TARGET): $(OBJS)
-	$(CC) -o $@ $(OBJS)
-
-
+	$(CC)-o $@ $(OBJS) -lpthread -lm
 
 .c.o:
 	$(CC) $(CFLAGS) -c $<

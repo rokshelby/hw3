@@ -10,7 +10,11 @@
 #include <sys/wait.h>
 #include <signal.h>
 #include <time.h>
-#include <sys/time.h>	
+#include <sys/time.h>
+#include <semaphore.h>
+#include <pthread.h>
+#include <fcntl.h>
+#include <math.h>	
 	void sig_handler(int);
 	void GenerateRandomNumbers(int);
 	void PerformSummation();
@@ -19,8 +23,10 @@
 	int GetInputPlaceInSharedMem(int);
 	char * GetString(int, char*);	
 	extern int arr;
-
+	sem_t mutex;
 	const char inputFile[] = "./InputNumberFile.txt";
 	const char sharedKey[] = "./master.c";
+	const char outputFile[] = "./adder_log";
+	const char semaphoreName[] = "semSignal";
 	const int sharedInt = 63;
 #endif	
