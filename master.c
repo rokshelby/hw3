@@ -10,19 +10,8 @@
 //if the program isn't finished before 100 seconds the program will stop.
 // 
 
-//#include "myGlobal.h"
+#include "myGlobal.h"
 
-#include <stdio.h>
-#include <string.h>
-#include <stdlib.h>
-#include <sys/ipc.h>
-#include <sys/types.h>
-#include <unistd.h>
-#include <sys/shm.h>
-#include <sys/wait.h>
-#include <signal.h>
-#include <time.h>
-#include <sys/time.h>
 
 void setSharedID();
 int getSharedID();
@@ -34,7 +23,7 @@ int ReadInputFile();
 int GetInputPlaceInSharedMem(int);
 void PerformSummation(int, int);
 char * GetString(int, char*);
-int master;
+
 int main(int argc, char ** argv)
 {
 
@@ -42,7 +31,7 @@ int main(int argc, char ** argv)
 	//	int numElem = 64
 	int getNumberOfPairs;
 	int shared_id = 0;	
-	int sharedID = 9393;
+
 	//get the number of ints;
 	if(argc > 1)
 	{
@@ -56,16 +45,24 @@ int main(int argc, char ** argv)
 		numElem++;
 		
 	}
+	
 	printf("number of elements %d\n", numElem);
 	GenerateRandomNumbers(numElem);
 	getNumberOfPairs = ReadInputFile();
 	shared_id = GetInputPlaceInSharedMem(getNumberOfPairs/2);
-	
+
 	printf("print shared_id %d\n", shared_id);
-       
+        
 	
 	PerformSummation(numElem, shared_id);
-
+	int * arr = (int*)shmat(shared_id, NULL, 0);
+	int x = 0;
+	for(x = 0; x < 8; x++)
+	{
+		printf("%d ", arr[x]);
+	}
+	printf("\n");
+	shmdt(arr);
 	if(shmctl(shared_id, IPC_RMID, NULL) < 0)
 		fprintf(stderr, "coult not deallocate shared memory: remove it manually\n");
 	
@@ -85,8 +82,7 @@ void PerformSummation(int numElem, int shared_id)
 	int intExec = 0;
 	int pida = 0;
 	int status = 0;
-
-	printf("idea %d\n", getSharedID());
+	
 	char ** argToPass = malloc(sizeof(char *) * 2);
 	for(i = 0; i < 4; i++)
 		argToPass[i] = malloc(sizeof(int) * 8);
@@ -111,12 +107,12 @@ void PerformSummation(int numElem, int shared_id)
 				st = (char*)malloc(sizeof(char) * 10);
 				sprintf(st, "%d", j);
 				strcpy(argToPass[0], GetString(strlen(st), st));
-				sprintf(st, "%d", size);
+				sprintf(st, "%d", inc/2);
 				strcpy(argToPass[1], GetString(strlen(st), st));
 				sprintf(st, "%d", shared_id);
 				strcpy(argToPass[2], GetString(strlen(st), st));
 				argToPass[3] = NULL;
-				fflush(stdout);	
+				
 				intExec = execv("bin_adder",argToPass);
 				
 				printf("Exec %d\n", intExec);
@@ -162,7 +158,7 @@ void PerformSummation(int numElem, int shared_id)
 
 
 			
-	}while(size/2-1 > i && aliveChilds > 0);
+	}while(size/2 > i && aliveChilds > 0);
 
 }
 
@@ -173,13 +169,13 @@ int GetInputPlaceInSharedMem(int num)
 	int ret = 0;
 	int i = 0;
 	int  intVar = 0;
-	key_t key = ftok(getSharedKey(), getSharedInt());
+	key_t key = ftok(sharedKey, sharedInt);
 	int shmid = shmget(key, (num * 2) * sizeof(int), 0666|IPC_CREAT);
 	printf("print shmid %d\n", shmid);
 	int * arr = (int*) shmat(shmid,  NULL ,0);
 	arr[0] = 0;
 	FILE * fptr;
-	if((fptr = fopen(getSharedInputFile(), "r")) == NULL)
+	if((fptr = fopen(inputFile, "r")) == NULL)
 	{
 		perror("file problems\n");
 		exit(1);
@@ -204,7 +200,7 @@ int ReadInputFile()
 	int total = 0;
 	int ret = 0;
 	FILE * fptr;
-	if((fptr = fopen(getSharedInputFile(), "r")) == NULL)
+	if((fptr = fopen(inputFile, "r")) == NULL)
 	{
 		perror("file problems");
 		exit(1);
@@ -223,7 +219,17 @@ int ReadInputFile()
 	free(num);
 	return count;
 }
-
+char * GetString(int size, char * str)
+ {
+         int i = 0;
+         char * returnStr = malloc(sizeof(char) * strlen(str));
+ 	 for(i = 0; i < strlen(str); i++)
+ 	 {
+ 	 	returnStr[i] = str[i];
+         }
+ 	 returnStr[strlen(str)] = 0;
+ 	 return returnStr;
+}
 void GenerateRandomNumbers(int num)
 {
 	srand(time(0)); //random seed
@@ -231,7 +237,7 @@ void GenerateRandomNumbers(int num)
 	int total = 0;
 	int tempInt = 0;
 	FILE * fptr;
-	fptr = fopen(getSharedInputFile(),"w");
+	fptr = fopen(inputFile,"w");
 	if(fptr == NULL)
 	{
 		perror("file problems\n");

@@ -4,20 +4,15 @@ TARGET = master
 TARGET1 = bin_adder
 OBJS = master.o
 OBJS1 = bin_adder.o
-LIBA = libmylib.a
-LIBO = libmylib.o
 .SUFFIXES: .c .o
 
-all : $(LIBA) $(TARGET) $(TARGET1)
+all : $(TARGET) $(TARGET1)
 
 $(TARGET1): $(OBJS1)
-	$(CC) -o $@ $(OBJS1) -L. -lmylib 
+	$(CC) -o $@ $(OBJS1)
 
 $(TARGET): $(OBJS)
-	$(CC) -o $@ $(OBJS) -L. -lmylib
-
-$(LIBA): $(LIBO)
-	ar rcs $(LIBA) $(LIBO)
+	$(CC) -o $@ $(OBJS)
 
 
 

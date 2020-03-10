@@ -1,34 +1,20 @@
-//#include "myGlobal.h"
-#include <stdlib.h>
-#include <stdio.h>
+#include "myGlobal.h"
 
-int getSharedID();
-void printSharedInt();
-extern int rakeem;
 int main(int argc, char ** argv)
 {
-	
-	int i = 0;
+	int index = 0;
+	int size = 0;
+	int shid = 0;
+	printf("argc %d\n", argc);
+	sscanf(argv[0], "%d", &index);
+	sscanf(argv[1], "%d", &size);
+	sscanf(argv[2], "%d", &shid);
 
-	printf("The Arguments \n");
-	for(i = 0; i < argc; i++)
-	{
-		printf("%s ", argv[i]);
-	}
-	printf("\n");
+	int * arr = (int*) shmat(shid, NULL, 0);
+	printf("index %d size %d id %d\n", index, size, shid);
+	arr[index] = arr[index] + arr[index + size];
+	shmdt(arr);
 
-
-
-	FILE * fptr;
-
-	fptr = fopen("test.txt", "w");
-
-	fprintf(fptr, "%d", 63);
-	fclose(fptr);
-
-	printf("shared id %d\n", getSharedID());
-	printf("shared_id %d\n", rakeem);
-	printSharedInt();
 	return 0;
 }
 
