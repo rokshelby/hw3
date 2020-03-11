@@ -20,7 +20,7 @@ int main(int argc, char ** argv)
 	{
 		total = total + arr[index + i];
 	}
-	//printf("Total %d\n", total);
+	printf("Total %d\n", total);
 	arr[index] = total;
 	//printf("UPDATE\n");
 	//for(i = 0; i < 8; i++)
