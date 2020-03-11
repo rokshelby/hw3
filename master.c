@@ -20,12 +20,11 @@ int getSharedInt();
 char * getSharedInputFile();
 void GenerateRandomNumbers(int);
 int ReadInputFile();
-
 int GetInputPlaceInSharedMem(int);
-
 void MethodOne(int, int, int);
 void MethodTwo(int, int,int );
 char * GetString(int, char*);
+void RelaxTheCells();
 int main(int argc, char ** argv)
 {
 
@@ -182,7 +181,8 @@ void MethodTwo(int size, int binSize, int shared_id)
 			        //child still running                                                                                                                                                                
 			}
                         else if(pida > 0)
-			{                                                                                                                                                                         printf("child is finished %d\n", pida);
+			{
+                            printf("child is finished %d\n", pida);
                             aliveChilds--;
                         }
                                                                                                                                                                                       }
@@ -210,6 +210,7 @@ void MethodOne(int size,int binSize, int shared_id)
 	int pida = 0;
 	int status = 0;
 	int exitFlag = 0;
+	int innerExitFlag = 0;
 	int anotherTemp = 0;
 	char ** argToPass = malloc(sizeof(char *) * 2);
 	int i = 0;
@@ -218,86 +219,105 @@ void MethodOne(int size,int binSize, int shared_id)
 	i = 0;
 
 	do
-	{
-		//for(j = 0; j < size; j = j + inc)
-		
-		if( maxAllowed > aliveChilds && exitFlag == 0)
+	{			
+		//printf("maxAllowed %d aliveChilds %d tempSize %d\n",maxAllowed, aliveChilds, tempSize);
+		while(innerExitFlag == 0)
 		{
-			pid = fork();
-			if(pid < 0)
-			{
-				perror("Creation of child process was unsuccessful\n");
-			}
-			else if(pid == 0)
-			{
-
-
-        		        if(tempSize > binSize)
-	                        {
-                                        anotherTemp = binSize;
-                                }
-                                else
-                                        anotherTemp = tempSize;
-
-				printf("Creation of child process was successful %d\n", getpid());
-				char * st;
-				st = (char*)malloc(sizeof(char) * 10);
-				sprintf(st, "%d", bins);
-				strcpy(argToPass[0], GetString(strlen(st), st));
-				sprintf(st, "%d", anotherTemp);
-				strcpy(argToPass[1], GetString(strlen(st), st));
-				sprintf(st, "%d", shared_id);
-				strcpy(argToPass[2], GetString(strlen(st), st));
-				argToPass[3] = NULL;
-				intExec = execv("bin_adder",argToPass);
-				printf("Exec %d\n", intExec);
-				exit(0);
-
-			}
-			else if(pid > 0)
-			{
-
-				aliveChilds++;
-			
-				printf("Parent sent off child to add two numbers %d and the bin is %d\n", pid, bins);
-	 	                bins++;
-	                	tempSize = tempSize - binSize;
-
-			}
-			
-		}
+			if(maxAllowed > aliveChilds && tempSize > 0)
+			{		
+				pid = fork();
+				if(pid < 0)
+				{
+					perror("Creation of child process was unsuccessful\n");
+				}
+				else if(pid == 0)
+				{
 	
+       		 		        if(tempSize > binSize)
+		                        {
+       	                                 anotherTemp = binSize;
+	                                }
+	                                else
+	                                        anotherTemp = tempSize;
 	
-		for(k = 0; k < aliveChilds; k++)	
-		{
-			pida = waitpid(pida, &status, WNOHANG);
-			if(pida == -1)
-			{
-				//perror
-			}		
-			else if(pida == 0)
-			{
-				//child still running
+					printf("Creation of child process was successful %d\n", getpid());
+					char * st;
+					st = (char*)malloc(sizeof(char) * 10);
+					sprintf(st, "%d", bins *binSize);
+					strcpy(argToPass[0], GetString(strlen(st), st));
+					sprintf(st, "%d", anotherTemp);
+					strcpy(argToPass[1], GetString(strlen(st), st));
+					sprintf(st, "%d", shared_id);
+					strcpy(argToPass[2], GetString(strlen(st), st));
+					argToPass[3] = NULL;
+					intExec = execv("bin_adder",argToPass);
+					printf("Exec %d\n", intExec);
+					exit(0);
+	
+				}
+				else if(pid > 0)
+				{
+	
+					aliveChilds++;
+				
+					printf("Parent sent off child to add two numbers %d and the bin is %d\n", pid, bins);
+		 	                bins++;
+		                	tempSize = tempSize - binSize;
+	
+				}
 			}
-			else if(pida > 0)
+			for(k = 0; k < aliveChilds; k++)	
 			{
-				printf("child is finished %d\n", pida);
-				aliveChilds--;
+				pida = waitpid(pida, &status, WNOHANG);
+				if(pida == -1)
+				{
+					//perror
+				}		
+				else if(pida == 0)
+				{
+					//child still running
+				}
+				else if(pida > 0)
+				{
+					printf("child is finished %d\n", pida);
+					aliveChilds--;
+					if(tempSize == 0 && aliveChilds == 0)
+						innerExitFlag = 1;
+				}
 			}
 		}
 
-		if(tempSize <= 0 && exitFlag == 0)
-		{
+
+		if(tempSize <= 0)
+		{	
+			
+			RelaxTheCells(bins, shared_id);
+			innerExitFlag = 0;
 			tempSize = bins;
 			if(bins == 1)
-				exitFlag = 1;
+			{
+				exitFlag = 1;		
+				innerExitFlag = 1;
+			}
 			bins = 0;
 		}
 
 		
 			
-	}while(aliveChilds > 0 && exitFlag == 0);
+	}while(innerExitFlag == 0 && exitFlag == 0);
 
+}
+void RelaxTheCells(int bins, int id)
+{
+	int * arr = (int*)shmat(id, NULL, 0);
+	
+	int i;
+
+	for(i = 0; i <bins; i++)
+	{	
+		arr[i] = arr[i*2];
+	}	
+	shmdt(arr);
 }
 
 

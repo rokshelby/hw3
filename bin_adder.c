@@ -14,15 +14,20 @@ int main(int argc, char ** argv)
 	sscanf(argv[2], "%d", &shid);
 
 	int * arr = (int*) shmat(shid, NULL, 0);
-	int tempIndex =0;
 	int total  = 0;
-	//printf("index %d, tempIndex %d, tempIndex+1 %d\n",index, tempIndex, tempIndex + 1);
+	//	printf("INDEX %d ",index);
 	for(i = 0; i < size; i++)
 	{
-		total = total + arr[(index * size) + i];
+		total = total + arr[index + i];
 	}
 	//printf("Total %d\n", total);
 	arr[index] = total;
+	//printf("UPDATE\n");
+	//for(i = 0; i < 8; i++)
+	//{	
+	//	printf("%d ", arr[i]);
+	//}
+	//printf("\n");
 	shmdt(arr);
 	sem_t * mutex = sem_open(semaphoreName, O_CREAT | O_EXCL, 0666, 63);		
 	sem_unlink(semaphoreName);
