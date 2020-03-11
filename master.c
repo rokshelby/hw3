@@ -20,8 +20,11 @@ int getSharedInt();
 char * getSharedInputFile();
 void GenerateRandomNumbers(int);
 int ReadInputFile();
+
 int GetInputPlaceInSharedMem(int);
-void PerformSummation(int, int, int);
+
+void MethodOne(int, int, int);
+void MethodTwo(int, int,int );
 char * GetString(int, char*);
 int main(int argc, char ** argv)
 {
@@ -29,8 +32,8 @@ int main(int argc, char ** argv)
 	int numElem = 8;
 	//	int numElem = 64
 	int getNumberOfPairs;
-	int shared_id = 0;	
-	int method2Shared_id;
+	int shared_id1 = 0;	
+	int shared_id2 = 0;
 	sem_t * mutex = sem_open(semaphoreName, O_CREAT|O_EXCL, 0666, 63);
 
 	//clear the output file
@@ -59,65 +62,166 @@ int main(int argc, char ** argv)
 	//printf("print shared_id %d\n", shared_id);
         
 	printf("Start Method1\n");
-	shared_id = GetInputPlaceInSharedMem(getNumberOfPairs/2);
-	PerformSummation(numElem, shared_id, 2); //method 1;
-	int * arr = (int*)shmat(shared_id, NULL, 0);
+	shared_id1 = GetInputPlaceInSharedMem(getNumberOfPairs/2);
+	MethodOne(numElem,2, shared_id1); //method 1;
+	int * arr = (int*)shmat(shared_id1, NULL, 0);
 	int x = 0;
 	for(x = 0; x < 8; x++)
 	{
 		printf("%d ", arr[x]);
 	}
 	printf("\n");
-	
+	shmdt(arr);
 	printf("Start Method2\n");
 	//shared_id = getInputPlaceInSharedMem(getNumberOfPairs/2);
 	//PerformSummation(numElem, shared_id, 2
-	printf("new size is %f\n", ceil( log10(getNumberOfPairs) / log10(2)  ));
+	//printf("new size is %f\n", ceil( log10(getNumberOfPairs) / log10(2)  ));
 
-	int test = ceil(log10(getNumberOfPairs)/log10(2));
-	
-	printf("The integer is %d\n", test);
+	int test = ceil(getNumberOfPairs/(log10(getNumberOfPairs)/log10(2)));
+
+	int test2 = ceil(log10(8)/log10(2));
+	printf("The integer is test1 %d  test2 %d\n", test, test2);
+	shared_id2 = GetInputPlaceInSharedMem(getNumberOfPairs/2);
+	//	MethodTwo(numElem,test, shared_id2);
+	arr = (int*)shmat(shared_id1, NULL, 0);
+	x = 0;
+        for(x = 0; x < 8; x++)
+        {
+                printf("%d ", arr[x]);
+        }
+        printf("\n");
+
 	shmdt(arr);
 
+	if(shmctl(shared_id1, IPC_RMID, NULL) < 0)
+		fprintf(stderr, "Shared memory was not deallocated: remove it manually\n");
 
-
-
-
-
-
-
-
-
-
-	if(shmctl(shared_id, IPC_RMID, NULL) < 0)
-		fprintf(stderr, "coult not deallocate shared memory: remove it manually\n");
+	if(shmctl(shared_id2, IPC_RMID, NULL) < 0)
+		fprintf(stderr, "Shared memory was not deallocated: Remove it manually\n");
 	
 	sem_destroy(mutex);	
 	return 0;
 }
 
-void PerformSummation(int numElem, int shared_id, int addSeq)
+void MethodTwo(int size, int binSize, int shared_id)
+{
+
+	int maxAllowed = 2;
+	int aliveChilds = 0;
+	int tempSize = size;
+	int bins = 0;
+	int pid = 0;
+	int pida = 0;
+	int anotherTemp = 0;
+	int intExec = 0;
+	int status = 0;
+	int k = 0;
+	int i = 0;
+	
+        char ** argToPass = malloc(sizeof(char *) * 2);
+        for(i = 0; i < 3; i++)
+                argToPass[i] = malloc(sizeof(int) * 8);
+        i = 0;
+
+	do
+	{
+		
+		if(maxAllowed > aliveChilds && bins < ceil(size/(binSize*1.0)))
+		{	
+			pid = fork();
+			if(pid < 0)
+			{
+				perror("Creation of child Process was unsuccessful\n");
+			}
+			else if(pid == 0)
+			{
+				if(tempSize > binSize)
+				{
+					anotherTemp = binSize;
+				}
+				else
+					anotherTemp = tempSize;
+				
+				
+			        printf("Creation of child process was successful %d\n", getpid());
+                                char * st;
+                                st = (char*)malloc(sizeof(char) * 10);
+                                sprintf(st, "%d", bins);
+                                strcpy(argToPass[0], GetString(strlen(st), st));
+                                sprintf(st, "%d", anotherTemp);
+                                strcpy(argToPass[1], GetString(strlen(st), st));
+                                sprintf(st, "%d", shared_id);
+                                strcpy(argToPass[2], GetString(strlen(st), st));
+                                argToPass[3] = NULL;
+                                intExec = execv("bin_adder",argToPass);
+                                printf("Exec %d\n", intExec);
+                                exit(0);
+			}
+			else
+			{
+				printf("Parent sent off child to add two numbers %d and the bin is %d\n", pid, bins);
+				bins++;
+				tempSize = tempSize - binSize;
+				i++;
+				aliveChilds++;			
+			}
+
+	
+
+		}
+
+                for(k = 0; k < aliveChilds; k++)
+                {
+                        pida = waitpid(pida, &status, WNOHANG);
+                        if(pida == -1)
+                        {
+                            //perror
+                        }
+                        else if(pida == 0)
+                        {
+			        //child still running                                                                                                                                                                
+			}
+                        else if(pida > 0)
+			{                                                                                                                                                                         printf("child is finished %d\n", pida);
+                            aliveChilds--;
+                        }
+                                                                                                                                                                                      }
+                                
+                             
+
+
+
+	}while(bins < ceil(size/(binSize*1.0) && aliveChilds > 0));
+
+	MethodOne(bins, 2, shared_id);
+
+}
+
+void MethodOne(int size,int binSize, int shared_id)
 {
 	int k = 0;
-	int j = 0;
-	int i = 0;
+
 	int pid;
-	int size = numElem;
+	int tempSize = size;
+	int bins = 0;
 	int maxAllowed = 2;
 	int aliveChilds = 0;
 	int intExec = 0;
 	int pida = 0;
 	int status = 0;
-	int toAdd = addSeq;
+	int exitFlag = 0;
+	int anotherTemp = 0;
 	char ** argToPass = malloc(sizeof(char *) * 2);
-	for(i = 0; i < 4; i++)
+	int i = 0;
+	for(i = 0; i < 3; i++)
 		argToPass[i] = malloc(sizeof(int) * 8);
 	i = 0;
-	//for(i = 0; i < (size/2)-1; i++)
+
 	do
 	{
 		//for(j = 0; j < size; j = j + inc)
-		while(j < size/2 && maxAllowed > aliveChilds)
+		
+		if( maxAllowed > aliveChilds && exitFlag == 0)
 		{
 			pid = fork();
 			if(pid < 0)
@@ -126,12 +230,21 @@ void PerformSummation(int numElem, int shared_id, int addSeq)
 			}
 			else if(pid == 0)
 			{
+
+
+        		        if(tempSize > binSize)
+	                        {
+                                        anotherTemp = binSize;
+                                }
+                                else
+                                        anotherTemp = tempSize;
+
 				printf("Creation of child process was successful %d\n", getpid());
 				char * st;
 				st = (char*)malloc(sizeof(char) * 10);
-				sprintf(st, "%d", j);
+				sprintf(st, "%d", bins);
 				strcpy(argToPass[0], GetString(strlen(st), st));
-				sprintf(st, "%d", toAdd);
+				sprintf(st, "%d", anotherTemp);
 				strcpy(argToPass[1], GetString(strlen(st), st));
 				sprintf(st, "%d", shared_id);
 				strcpy(argToPass[2], GetString(strlen(st), st));
@@ -146,8 +259,10 @@ void PerformSummation(int numElem, int shared_id, int addSeq)
 
 				aliveChilds++;
 			
-				printf("Parent sent off child to add two numbers %d and J is %d\n", pid, j);
-				j=j+1;
+				printf("Parent sent off child to add two numbers %d and the bin is %d\n", pid, bins);
+	 	                bins++;
+	                	tempSize = tempSize - binSize;
+
 			}
 			
 		}
@@ -171,15 +286,17 @@ void PerformSummation(int numElem, int shared_id, int addSeq)
 			}
 		}
 
-		if(j == size/2)
+		if(tempSize <= 0 && exitFlag == 0)
 		{
-			size = size / 2;
-			j = 0;
+			tempSize = bins;
+			if(bins == 1)
+				exitFlag = 1;
+			bins = 0;
 		}
 
 		
 			
-	}while(aliveChilds > 0 && size >= 0);
+	}while(aliveChilds > 0 && exitFlag == 0);
 
 }
 

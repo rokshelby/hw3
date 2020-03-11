@@ -4,6 +4,7 @@ void waitRandom();
 void writeFile();
 int main(int argc, char ** argv)
 {
+	
 	int i;
 	int index = 0;
 	int size = 0;
@@ -14,14 +15,11 @@ int main(int argc, char ** argv)
 
 	int * arr = (int*) shmat(shid, NULL, 0);
 	int tempIndex =0;
-	int total = arr[index];
-	total = 0;
-	tempIndex = index * 2;
-	//printf("initial %d\n", arr[index]);
+	int total  = 0;
 	//printf("index %d, tempIndex %d, tempIndex+1 %d\n",index, tempIndex, tempIndex + 1);
 	for(i = 0; i < size; i++)
 	{
-		total = total + arr[tempIndex+i];
+		total = total + arr[(index * size) + i];
 	}
 	//printf("Total %d\n", total);
 	arr[index] = total;
