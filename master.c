@@ -27,14 +27,16 @@ void MethodTwo(int, int,int );
 char * GetString(int, char*);
 void RelaxTheCells();
 void PrintArray();
+int GetBinZero();
+
 int main(int argc, char ** argv)
 {
-
-	int numElem = 8;
+	int numElem = 64;
 	//	int numElem = 64
 	int getNumberOfPairs;
 	int shared_id1 = 0;	
-	
+	int method1Summation = 0;
+	int method2Summation = 0;	
 	sem_t * mutex = sem_open(semaphoreName, O_CREAT|O_EXCL, 0666, 63);
 
 	//clear the output file
@@ -54,38 +56,28 @@ int main(int argc, char ** argv)
 		numElem++;
 		
 	}
-	
-	//printf("number of elements %d\n", numElem);
+
 	
 	GenerateRandomNumbers(numElem);
 	getNumberOfPairs = ReadInputFile();
-
-	//printf("print shared_id %d\n", shared_id);
         
 	printf("Start Method1\n");
-	shared_id1 = GetInputPlaceInSharedMem(getNumberOfPairs/2);
-	//MethodOne(numElem,2, shared_id1); //method 1;
-	int * arr = (int*)shmat(shared_id1, NULL, 0);
-	int x = 0;
-	for(x = 0; x < 8; x++)
-	{
-		printf("%d ", arr[x]);
-	}
-	printf("\n");
-	shmdt(arr);
+	shared_id1 = GetInputPlaceInSharedMem(getNumberOfPairs);
+	MethodOne(numElem,2, shared_id1); //method 1;
+	method1Summation = GetBinZero(shared_id1);
+	//PrintArray(numElem, shared_id1);
+
+	
 	printf("Start Method2\n");
-	//shared_id = getInputPlaceInSharedMem(getNumberOfPairs/2);
-	//PerformSummation(numElem, shared_id, 2
-	//printf("new size is %f\n", ceil( log10(getNumberOfPairs) / log10(2)  ));
-
-	int test = ceil(getNumberOfPairs/(log10(getNumberOfPairs)/log10(2)));
-
-	int test2 = ceil(log10(8)/log10(2));
-	printf("The integer is test1 %d  test2 %d numberofelems %d\n", test, test2, getNumberOfPairs);
+	int binSize = ceil(getNumberOfPairs/(log10(getNumberOfPairs)/log10(2)));
 	ResetNumbers(shared_id1, getNumberOfPairs);
-	PrintArray(numElem, shared_id1);
-	MethodTwo(numElem,test, shared_id1);
-	PrintArray(numElem, shared_id1);
+	MethodTwo(numElem, binSize, shared_id1);
+	method2Summation = GetBinZero(shared_id1);
+	//PrintArray(numElem, shared_id1);
+
+
+	printf("Method 1 %d and Method 2 %d \n", method1Summation, method2Summation);	
+
 
 	if(shmctl(shared_id1, IPC_RMID, NULL) < 0)
 		fprintf(stderr, "Shared memory was not deallocated: remove it manually\n");
@@ -103,18 +95,23 @@ void PrintArray(int size, int shared_id)
                 printf("%d ", arr[x]);
         }
         printf("\n");
-
         shmdt(arr);
+}
 
-
-
+int GetBinZero(int shared_id)
+{
+	int returnInt;
+	int * arr = (int*)shmat(shared_id, NULL, 0);
+	returnInt = arr[0];
+	shmdt(arr);
+	return returnInt;
 
 }
 
 void MethodTwo(int size, int binSize, int shared_id)
 {
 
-	int maxAllowed = 2;
+	int maxAllowed = 20;
 	int aliveChilds = 0;
 	int tempSize = size;
 	int bins = 0;
@@ -133,7 +130,6 @@ void MethodTwo(int size, int binSize, int shared_id)
 
 	do
 	{
-	
 		if(maxAllowed > aliveChilds && bins < ceil(size/(binSize*1.0)))
 		{	
 			pid = fork();
@@ -195,14 +191,8 @@ void MethodTwo(int size, int binSize, int shared_id)
                         }
                  }
                                 
-	}while(bins < ceil(size/(binSize*1.0)) && aliveChilds > 0);
-	printf("before method 2 relax\n");
-	PrintArray(8, shared_id);
-
+	}while(aliveChilds > 0);
 	RelaxTheCells(bins, binSize, shared_id);	
-	printf("after method 2 relax\n");	
-	PrintArray(8, shared_id);
-
 	MethodOne(bins, 2, shared_id);
 
 }
@@ -210,13 +200,10 @@ void MethodTwo(int size, int binSize, int shared_id)
 void MethodOne(int size,int binSize, int shared_id)
 {
 	int k = 0;
-
 	int pid;
 	int tempSize = size;
 	int bins = 0;
-
-
-	int maxAllowed = 2;
+	int maxAllowed = 20;
 	int aliveChilds = 0;
 	int intExec = 0;
 	int pida = 0;
@@ -232,8 +219,8 @@ void MethodOne(int size,int binSize, int shared_id)
 
 	do
 	{			
-		printf("maxAllowed %d aliveChilds %d tempSize %d\n",maxAllowed, aliveChilds, tempSize);
-		while(innerExitFlag == 0)
+		//printf("maxAllowed %d aliveChilds %d tempSize %d\n",maxAllowed, aliveChilds, tempSize);
+		do
 		{
 		 
 			if(maxAllowed > aliveChilds && tempSize > 0)
@@ -248,10 +235,10 @@ void MethodOne(int size,int binSize, int shared_id)
 	
        		 		        if(tempSize > binSize)
 		                        {
-       	                                 anotherTemp = binSize;
+       	                                	anotherTemp = binSize;
 	                                }
 	                                else
-	                                        anotherTemp = tempSize;
+	                                	anotherTemp = tempSize;
 	
 					printf("Creation of child process was successful %d\n", getpid());
 					char * st;
@@ -270,13 +257,10 @@ void MethodOne(int size,int binSize, int shared_id)
 				}
 				else if(pid > 0)
 				{
-	
 					aliveChilds++;
-				
 					printf("Parent sent off child to add two numbers %d and the bin is %d\n", pid, bins);
 		 	                bins++;
 		                	tempSize = tempSize - binSize;
-	
 				}
 			}
 			for(k = 0; k < aliveChilds; k++)	
@@ -298,8 +282,8 @@ void MethodOne(int size,int binSize, int shared_id)
 						innerExitFlag = 1;
 				}
 			}
-		}
-
+		}while(innerExitFlag == 0 && aliveChilds > 0);
+		//PrintArray(size, shared_id);
 
 		if(tempSize <= 0)
 		{	
@@ -314,18 +298,13 @@ void MethodOne(int size,int binSize, int shared_id)
 			}
 			bins = 0;
 		}
-
-		
-			
 	}while(innerExitFlag == 0 && exitFlag == 0);
 
 }
 void RelaxTheCells(int bins, int binSize, int id)
 {
 	int * arr = (int*)shmat(id, NULL, 0);
-	
 	int i;
-
 	for(i = 0; i <bins; i++)
 	{	
 		arr[i] = arr[i*binSize];
@@ -352,7 +331,7 @@ int GetInputPlaceInSharedMem(int num)
 		exit(1);
 	}
 	ret = fscanf(fptr, "%d", &intVar);
-	for(i = 0;ret != EOF && i < num * 2; i++)
+	for(i = 0;ret != EOF && i < num; i++)
 	{
 		arr[i] = intVar;
 		ret = fscanf(fptr, "%d", &intVar);
@@ -366,7 +345,6 @@ int GetInputPlaceInSharedMem(int num)
 
 void ResetNumbers(int id, int num)
 {
-	
 	int i = 0;
 	int intVar = 0;
 	int * arr = (int*)shmat(id, NULL, 0);

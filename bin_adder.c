@@ -20,7 +20,7 @@ int main(int argc, char ** argv)
 	{
 		total = total + arr[index + i];
 	}
-	printf("Total %d\n", total);
+	//printf("Total %d\n", total);
 	arr[index] = total;
 	//printf("UPDATE\n");
 	//for(i = 0; i < 8; i++)
@@ -29,25 +29,24 @@ int main(int argc, char ** argv)
 	//}
 	//printf("\n");
 	shmdt(arr);
-	sem_t * mutex = sem_open(semaphoreName, O_CREAT | O_EXCL, 0666, 63);		
+	sem_t* mutex = sem_open(semaphoreName, O_EXCL, 0666, 63);		
 	sem_unlink(semaphoreName);
 	int exitFlag = 0;
 	i = 0;
-	for(i = 0; i < 5 && exitFlag == 0; i++)
+	for(i = 0; i < 5; i++)
 	{
 		waitRandom();
 		sem_wait(mutex);
 		sleep(1);
 		writeFile(size, index, total);
-		exitFlag = 1;
 		sem_post(mutex);
 	}
 	
-	
+	sem_close(mutex);	
 	return 0;
 }
 
-void writeFile(int size, int bin, int total)
+void writeFile(int size, int index, int total)
 {
 	FILE * fptr;
 	if((fptr = fopen(outputFile, "a"))== NULL)
@@ -57,7 +56,7 @@ void writeFile(int size, int bin, int total)
 	}	
 	else
 	{
-		fprintf(fptr, "Child pid %d added size of bin %d which is %d into bin %d \n", getpid(), size, total, bin);
+		fprintf(fptr, "Pid %d Index %d Size %d \n", getpid(), index, size);
 	}
 	
 	fclose(fptr);
