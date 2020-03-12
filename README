@@ -13,3 +13,18 @@ to run the program you will type the command 'master' then read from output file
 'adder_log'
 
 
+
+TORUN
+
+type 'make'
+type 'master'
+
+or 
+
+type 'master xx'
+
+xx = some number that you like
+
+
+
+
