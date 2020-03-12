@@ -28,10 +28,13 @@ char * GetString(int, char*);
 void RelaxTheCells();
 void PrintArray();
 int GetBinZero();
-
+void IncrementTime(int);
+int GetNanoTime(int);
+int GetClockTime(int);
 int main(int argc, char ** argv)
 {
-	int numElem = 64;
+
+	int numElem = 8;
 	//	int numElem = 64
 	int getNumberOfPairs;
 	int shared_id1 = 0;	
@@ -90,7 +93,7 @@ void PrintArray(int size, int shared_id)
 {
         int * arr = (int*)shmat(shared_id, NULL, 0);
         int x = 0;
-        for(x = 0; x < size; x++)
+        for(x = 2; x < size+2; x++)
         {
                 printf("%d ", arr[x]);
         }
@@ -102,11 +105,42 @@ int GetBinZero(int shared_id)
 {
 	int returnInt;
 	int * arr = (int*)shmat(shared_id, NULL, 0);
-	returnInt = arr[0];
+	returnInt = arr[2];
 	shmdt(arr);
 	return returnInt;
-
 }
+
+void IncrementTime(int shared_id)
+{
+	int * arr = (int*)shmat(shared_id, NULL, 0);
+	arr[0] = arr[0] + 10000;
+	if(arr[0] > 10000000)
+	{
+		arr[1] = arr[1] + 1;
+		arr[0] = 0;
+	}		
+	shmdt(arr);	
+}
+
+int GetNanoTime(int shared_id)
+{
+
+	int nanoTime = 0;
+	int * arr = (int*)shmat(shared_id, NULL, 0);
+	nanoTime = arr[0];
+	shmdt(arr);
+	return nanoTime;
+}
+
+int GetClockTime(int shared_id)
+{
+	int clockTime = 0;
+	int * arr = (int*)shmat(shared_id, NULL, 0);
+	clockTime = arr[1];
+	shmdt(arr);
+	return clockTime;
+}
+
 
 void MethodTwo(int size, int binSize, int shared_id)
 {
@@ -150,7 +184,7 @@ void MethodTwo(int size, int binSize, int shared_id)
 			        printf("Creation of child process was successful %d\n", getpid());
                                 char * st;
                                 st = (char*)malloc(sizeof(char) * 10);
-                                sprintf(st, "%d", bins*binSize);
+                                sprintf(st, "%d", ((bins*binSize)));
                                 strcpy(argToPass[0], GetString(strlen(st), st));
                                 sprintf(st, "%d", anotherTemp);
                                 strcpy(argToPass[1], GetString(strlen(st), st));
@@ -190,7 +224,7 @@ void MethodTwo(int size, int binSize, int shared_id)
                             aliveChilds--;
                         }
                  }
-                                
+ 		IncrementTime(shared_id);                               
 	}while(aliveChilds > 0);
 	RelaxTheCells(bins, binSize, shared_id);	
 	MethodOne(bins, 2, shared_id);
@@ -243,7 +277,7 @@ void MethodOne(int size,int binSize, int shared_id)
 					printf("Creation of child process was successful %d\n", getpid());
 					char * st;
 					st = (char*)malloc(sizeof(char) * 10);
-					sprintf(st, "%d", bins *binSize);
+					sprintf(st, "%d", (bins *binSize));
 					strcpy(argToPass[0], GetString(strlen(st), st));
 					sprintf(st, "%d", anotherTemp);
 					strcpy(argToPass[1], GetString(strlen(st), st));
@@ -282,6 +316,7 @@ void MethodOne(int size,int binSize, int shared_id)
 						innerExitFlag = 1;
 				}
 			}
+			IncrementTime(shared_id);
 		}while(innerExitFlag == 0 && aliveChilds > 0);
 		//PrintArray(size, shared_id);
 
@@ -307,7 +342,7 @@ void RelaxTheCells(int bins, int binSize, int id)
 	int i;
 	for(i = 0; i <bins; i++)
 	{	
-		arr[i] = arr[i*binSize];
+		arr[i+2] = arr[(i*binSize)+2];
 	}	
 	shmdt(arr);
 }
@@ -320,7 +355,7 @@ int GetInputPlaceInSharedMem(int num)
 	int i = 0;
 	int  intVar = 0;
 	key_t key = ftok(sharedKey, sharedInt);
-	int shmid = shmget(key, (num * 2) * sizeof(int), 0666|IPC_CREAT);
+	int shmid = shmget(key, (num + 2) * sizeof(int), 0666|IPC_CREAT);
 	printf("print shmid %d\n", shmid);
 	int * arr = (int*) shmat(shmid,  NULL ,0);
 	arr[0] = 0;
@@ -331,7 +366,9 @@ int GetInputPlaceInSharedMem(int num)
 		exit(1);
 	}
 	ret = fscanf(fptr, "%d", &intVar);
-	for(i = 0;ret != EOF && i < num; i++)
+	arr[0] = 0;
+	arr[1] = 0;
+	for(i = 2;ret != EOF && i < num+2; i++)
 	{
 		arr[i] = intVar;
 		ret = fscanf(fptr, "%d", &intVar);
@@ -355,7 +392,7 @@ void ResetNumbers(int id, int num)
 		exit(1);
 	}
 	fscanf(fptr, "%d", &intVar);
-	for(i = 0; i < num; i++)
+	for(i = 2; i < num+2; i++)
 	{
 		arr[i] = intVar;
 		fscanf(fptr, "%d", &intVar);

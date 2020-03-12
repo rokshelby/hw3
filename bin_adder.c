@@ -2,6 +2,8 @@
 
 void waitRandom();
 void writeFile();
+int GetNanoTime(int);
+int GetClockTime(int);
 int main(int argc, char ** argv)
 {
 	
@@ -18,10 +20,10 @@ int main(int argc, char ** argv)
 	//	printf("INDEX %d ",index);
 	for(i = 0; i < size; i++)
 	{
-		total = total + arr[index + i];
+		total = total + arr[index + i + 2];
 	}
 	//printf("Total %d\n", total);
-	arr[index] = total;
+	arr[index+2] = total;
 	//printf("UPDATE\n");
 	//for(i = 0; i < 8; i++)
 	//{	
@@ -31,19 +33,39 @@ int main(int argc, char ** argv)
 	shmdt(arr);
 	sem_t* mutex = sem_open(semaphoreName, O_EXCL, 0666, 63);		
 	sem_unlink(semaphoreName);
-	int exitFlag = 0;
 	i = 0;
 	for(i = 0; i < 5; i++)
 	{
 		waitRandom();
+		fprintf(stderr, "Pid %d is requesting to enter critical section at clock %d nano %d \n", getpid(), GetClockTime(shid), GetNanoTime(shid));
 		sem_wait(mutex);
 		sleep(1);
+		fprintf(stderr, "Pid %d is in critical section at clock %d nano %d \n", getpid(), GetClockTime(shid), GetNanoTime(shid));
 		writeFile(size, index, total);
+		fprintf(stderr, "Pid %d is exiting critical section at clock %d nano %d \n", getpid(), GetClockTime(shid), GetNanoTime(shid));
 		sem_post(mutex);
 	}
 	
 	sem_close(mutex);	
 	return 0;
+}
+int GetNanoTime(int shared_id)
+{
+
+        int nanoTime = 0;
+        int * arr = (int*)shmat(shared_id, NULL, 0);
+        nanoTime = arr[0];
+        shmdt(arr);
+        return nanoTime;
+}
+
+int GetClockTime(int shared_id)
+{
+        int clockTime = 0;
+        int * arr = (int*)shmat(shared_id, NULL, 0);
+        clockTime = arr[1];
+        shmdt(arr);
+        return clockTime;
 }
 
 void writeFile(int size, int index, int total)
