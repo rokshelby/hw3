@@ -31,17 +31,32 @@ int GetBinZero();
 void IncrementTime(int);
 int GetNanoTime(int);
 int GetClockTime(int);
+
+void catch_signal(int);
+
+pid_t pids[20];
+sem_t * mutex;
+int shared_id1;
 int main(int argc, char ** argv)
 {
-
+	
 	int numElem = 8;
 	//	int numElem = 64
 	int getNumberOfPairs;
-	int shared_id1 = 0;	
+	shared_id1 = 0;	
 	int method1Summation = 0;
-	int method2Summation = 0;	
-	sem_t * mutex = sem_open(semaphoreName, O_CREAT|O_EXCL, 0666, 63);
+	int method2Summation = 0;
 
+	struct itimerval myTime, method1Time, method2Time;
+	
+	signal(SIGALRM, catch_signal);
+	signal(SIGINT, catch_signal);
+
+	myTime.it_value.tv_sec = 100;
+	myTime.it_value.tv_usec = 0;
+	myTime.it_interval = myTime.it_value;
+	
+	mutex = sem_open(semaphoreName, O_CREAT|O_EXCL, 0666, 63);
 	//clear the output file
 	FILE * fptr;	
 	fptr = 	fopen(outputFile, "w");
@@ -60,14 +75,20 @@ int main(int argc, char ** argv)
 		
 	}
 
+
 	
 	GenerateRandomNumbers(numElem);
 	getNumberOfPairs = ReadInputFile();
         
 	printf("Start Method1\n");
 	shared_id1 = GetInputPlaceInSharedMem(getNumberOfPairs);
+	setitimer(ITIMER_REAL, &myTime, NULL);
 	MethodOne(numElem,2, shared_id1); //method 1;
 	method1Summation = GetBinZero(shared_id1);
+	
+	getitimer(ITIMER_REAL, &method1Time);
+	
+
 	//PrintArray(numElem, shared_id1);
 
 	
@@ -76,11 +97,11 @@ int main(int argc, char ** argv)
 	ResetNumbers(shared_id1, getNumberOfPairs);
 	MethodTwo(numElem, binSize, shared_id1);
 	method2Summation = GetBinZero(shared_id1);
+	getitimer(ITIMER_REAL, &method2Time);
 	//PrintArray(numElem, shared_id1);
 
-
-	printf("Method 1 %d and Method 2 %d \n", method1Summation, method2Summation);	
-
+	printf("Method 1 Summation %d completed in %ld seconds and %ld micro seconds\n",method1Summation,method1Time.it_interval.tv_sec - method1Time.it_value.tv_sec, method1Time.it_value.tv_usec);
+	printf("Method 2 Summation %d completed in %ld seconds and %ld micro seconds\n",method2Summation,method1Time.it_value.tv_sec - method2Time.it_value.tv_sec, method1Time.it_value.tv_usec - method2Time.it_value.tv_usec);
 
 	if(shmctl(shared_id1, IPC_RMID, NULL) < 0)
 		fprintf(stderr, "Shared memory was not deallocated: remove it manually\n");
@@ -88,6 +109,7 @@ int main(int argc, char ** argv)
 	sem_destroy(mutex);	
 	return 0;
 }
+
 
 void PrintArray(int size, int shared_id)
 {
@@ -100,6 +122,28 @@ void PrintArray(int size, int shared_id)
         printf("\n");
         shmdt(arr);
 }
+
+void catch_signal(int sig)
+{
+	if(sig == SIGINT)
+	{
+		printf("\nKill signal was executed\n");
+	}
+	else if(sig == SIGALRM)
+	{
+		printf("Time has expired\n");
+	}
+	int i = 0;
+	sem_close(mutex);
+	shmctl(shared_id1, IPC_RMID, NULL);
+	for(i = 0; i < 20; i++)
+		kill(pids[i], SIGKILL);
+	kill(getpid(), SIGKILL);
+	exit(0);	
+
+	
+}
+
 
 int GetBinZero(int shared_id)
 {
@@ -114,7 +158,7 @@ void IncrementTime(int shared_id)
 {
 	int * arr = (int*)shmat(shared_id, NULL, 0);
 	arr[0] = arr[0] + 10000;
-	if(arr[0] > 10000000)
+	if(arr[0] > 1000000000)
 	{
 		arr[1] = arr[1] + 1;
 		arr[0] = 0;
@@ -198,6 +242,9 @@ void MethodTwo(int size, int binSize, int shared_id)
 			else
 			{
 				printf("Parent sent off child to add two numbers %d and the bin is %d\n", pid, bins);
+				pids[bins] = pid;
+
+
 				bins++;
 				tempSize = tempSize - binSize;
 				aliveChilds++;			
@@ -212,6 +259,7 @@ void MethodTwo(int size, int binSize, int shared_id)
                         pida = waitpid(pida, &status, WNOHANG);
                         if(pida == -1)
                         {
+                            //q
                             //perror
                         }
                         else if(pida == 0)
@@ -293,6 +341,7 @@ void MethodOne(int size,int binSize, int shared_id)
 				{
 					aliveChilds++;
 					printf("Parent sent off child to add two numbers %d and the bin is %d\n", pid, bins);
+					pids[bins] = pid;
 		 	                bins++;
 		                	tempSize = tempSize - binSize;
 				}

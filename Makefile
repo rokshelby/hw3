@@ -4,6 +4,8 @@ TARGET = master
 TARGET1 = bin_adder
 OBJS = master.o
 OBJS1 = bin_adder.o
+LOG = adder_log
+TEXT = InputNumberFile.txt
 .SUFFIXES: .c .o
 
 all : $(TARGET) $(TARGET1)
@@ -19,5 +21,5 @@ $(TARGET): $(OBJS)
 
 .PHONY: clean
 clean:
-	rm -f *.o *.log *~ $(LIB) $(TARGET) $(OBJS) $(TARGET1)
+	rm -f *.o *.log *~ $(LIB) $(TARGET) $(TARGET1) $(LOG) $(TEXT)
 

@@ -32,13 +32,14 @@ int main(int argc, char ** argv)
 	//printf("\n");
 	shmdt(arr);
 	sem_t* mutex = sem_open(semaphoreName, O_EXCL, 0666, 63);		
-	sem_unlink(semaphoreName);
+	//sem_unlink(semaphoreName);
 	i = 0;
 	for(i = 0; i < 5; i++)
 	{
 		waitRandom();
 		fprintf(stderr, "Pid %d is requesting to enter critical section at clock %d nano %d \n", getpid(), GetClockTime(shid), GetNanoTime(shid));
 		sem_wait(mutex);
+		//sleep(6); //gives better adder_log results
 		sleep(1);
 		fprintf(stderr, "Pid %d is in critical section at clock %d nano %d \n", getpid(), GetClockTime(shid), GetNanoTime(shid));
 		writeFile(size, index, total);
@@ -71,7 +72,7 @@ int GetClockTime(int shared_id)
 void writeFile(int size, int index, int total)
 {
 	FILE * fptr;
-	if((fptr = fopen(outputFile, "a"))== NULL)
+	if((fptr = fopen(outputFile, "ab+"))== NULL)
 	{
 		perror("file problems\n");
 		exit(1);

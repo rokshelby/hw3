@@ -23,7 +23,7 @@
 	int GetInputPlaceInSharedMem(int);
 	char * GetString(int, char*);	
 	extern int arr;
-	sem_t mutex;
+
 	const char inputFile[] = "./InputNumberFile.txt";
 	const char sharedKey[] = "./master.c";
 	const char outputFile[] = "./adder_log";
