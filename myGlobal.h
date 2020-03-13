@@ -37,7 +37,7 @@
 	int GetBinZero();
 	void SetSharedID(int);
 	int ReadArgument(char*);
-	
+	void UpdateTime();	
 	void CatchSignal(int);
 
 	pid_t pids[20];
@@ -48,7 +48,7 @@
 
 
 
-	//#define NOTIMETEST 1
+	#define NOTIMETEST 1
 	const char inputFile[] = "./InputNumberFile.txt";
 	const char sharedKey[] = "./master.c";
 	const char outputFile[] = "./adder_log";

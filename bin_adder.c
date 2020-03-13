@@ -9,7 +9,6 @@ int main(int argc, char ** argv)
 	int i;
 	int index = 0;
 	int size = 0;
-	
 	sscanf(argv[0], "%d", &index);
 	sscanf(argv[1], "%d", &size);
 	
@@ -20,9 +19,9 @@ int main(int argc, char ** argv)
 
 	for(i = 0; i < size; i++)
 	{
-		total = total + arr[index + i];
+		total = total + arr[index + i +2];
 	}
-	arr[index] = total;
+	arr[index + 2] = total;
 
 	shmdt(arr);
 	sem_t* mutex = sem_open(semaphoreName, O_EXCL, 0666, 63);		
@@ -31,25 +30,33 @@ int main(int argc, char ** argv)
 	for(i = 0; i < 5; i++)
 	{
 		#ifdef NOTIMETEST
+		
 		waitRandom();
-		fprintf(stderr, "Pid %d is requesting to enter critical section at clock  nano  \n", getpid());
+		arr = (int*)shmat(sharedID, NULL, 0);
+		fprintf(stderr, "Pid %d is requesting to enter critical section at clock %ld seconds and %ld micro seconds  \n", getpid(), arr[0],arr[1]);
+		shmdt(arr);
 		#endif
 
 		sem_wait(mutex);
 		
 		#ifdef NOTIMETEST
 		sleep(1);
-		fprintf(stderr, "Pid %d is in critical section at clock  nano  \n", getpid());
+		arr = (int*)shmat(sharedID, NULL, 0);
+		fprintf(stderr, "Pid %d is in critical section at clock %ld seconds and %ld micro seconds  \n", getpid(), arr[0],arr[1]);
+		shmdt(arr);
 		#endif
 		
 		writeFile(size, index, total);
 		
 		#ifdef NOTIMETEST
-		fprintf(stderr, "Pid %d is exiting critical section at clock  nano  \n", getpid());
+		arr = (int*)shmat(sharedID, NULL, 0);
+		fprintf(stderr, "Pid %d is exiting critical section at clock %ld seconds and %ld micro seconds  \n", getpid(), arr[0], arr[1]);
+		shmdt(arr);
 		#endif
 		
 		sem_post(mutex);
 	}
+	
 	sem_close(mutex);	
 	return 0;
 }

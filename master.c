@@ -12,16 +12,17 @@
 
 #include "myGlobal.h"
 int sharedID;
+struct itimerval myTime;
 int main(int argc, char ** argv)
 {
 	
 
-	int numElem = 64;
+	int numElem = 8;
 	//	int numElem = 64
 	
 	int method1Summation = 0;
 	int method2Summation = 0;
-	struct itimerval myTime, method1Time, method2Time;
+	struct itimerval method1Time, method2Time;
 	
 	signal(SIGALRM, CatchSignal);
 	signal(SIGINT, CatchSignal);
@@ -54,11 +55,9 @@ int main(int argc, char ** argv)
 	method1Summation = GetBinZero();
 	
 	getitimer(ITIMER_REAL, &method1Time);
-	
 
 	//PrintArray(numElem, shared_id1);
 
-	
 	printf("Start Method2\n");
 	int binSize = ceil(numElem/(log10(numElem)/log10(2)));
 	ResetNumbers(numElem);
@@ -80,15 +79,10 @@ int main(int argc, char ** argv)
 	return 0;
 }
 
-void IncrementTime()
-{
-
-
-
-}
-
 void PrintArray(int size)
 {
+
+	sharedID = GetSharedIDFromFile();
         arr = (int*)shmat(sharedID, NULL, 0);
         int x = 0;
         for(x = 0; x < size; x++)
@@ -112,6 +106,19 @@ int ReadArgument(char * str)
         	numElem++;
 
 	return numElem;
+
+}
+
+
+void UpdateTime()
+{
+	struct itimerval childTime;
+	getitimer(ITIMER_REAL, &childTime);
+	sharedID = GetSharedIDFromFile();
+	arr = (int*)shmat(sharedID, NULL, 0);
+	arr[0] = myTime.it_value.tv_sec - childTime.it_value.tv_sec;
+	arr[1] = childTime.it_value.tv_usec;
+	shmdt(arr);
 
 }
 
@@ -142,7 +149,7 @@ int GetBinZero()
 	int returnInt = 0;
 	arr = (int*)shmat(sharedID, NULL, 0);
 	//printf("Shared ID %d\n",*shared_id1);
-	returnInt = arr[0];
+	returnInt = arr[2];
 	shmdt(arr);
 	return returnInt;
 }
@@ -213,7 +220,7 @@ void MethodTwo(int size, int binSize)
 			}
 
 	
-
+	
 		}
 
                 for(k = 0; k < aliveChilds; k++)
@@ -234,7 +241,7 @@ void MethodTwo(int size, int binSize)
                             aliveChilds--;
                         }
                  }
- 	
+ 		UpdateTime();
 	}while(aliveChilds > 0);
 	free(argToPass);
 	RelaxTheCells(bins, binSize);	
@@ -327,7 +334,7 @@ void MethodOne(int size,int binSize)
 						innerExitFlag = 1;
 				}
 			}
-
+			UpdateTime();
 		}while(innerExitFlag == 0 && aliveChilds > 0);
 		//PrintArray(size, shared_id);
 
@@ -355,7 +362,7 @@ void RelaxTheCells(int bins, int binSize)
 	int i;
 	for(i = 0; i <bins; i++)
 	{	
-		arr[i] = arr[(i*binSize)];
+		arr[i+2] = arr[(i*binSize)+2];
 	}	
 	shmdt(arr);
 }
@@ -378,7 +385,7 @@ int GetInputPlaceInSharedMem(int num)
 	int  intVar = 0;
 	key_t key = ftok(sharedKey, sharedInt);
 	//int shmid = shmget(key, (num + 2) * sizeof(int), 0666|IPC_CREAT);
-	int shmid = shmget(key, num*  sizeof(int), 0666|IPC_CREAT);
+	int shmid = shmget(key, (num+2)*  sizeof(int), 0666|IPC_CREAT);
 	
 	printf("print shmid %d\n", shmid);
 	arr = (int*) shmat(shmid,NULL ,0);
@@ -394,9 +401,9 @@ int GetInputPlaceInSharedMem(int num)
 	arr[1] = 0;
 	for(i = 0;ret != EOF && i < num; i++)
 	{
-		arr[i] = intVar;
+		arr[2+i] = intVar;
 		ret = fscanf(fptr, "%d", &intVar);
-		printf("%d ", arr[i]);
+		printf("%d ", arr[2+i]);
 	}
 	printf("\n");
 	fclose(fptr);
@@ -436,7 +443,7 @@ void ResetNumbers(int num)
 	fscanf(fptr, "%d", &intVar);
 	for(i = 0; i < num; i++)
 	{
-		arr[i] = intVar;
+		arr[i+2] = intVar;
 		fscanf(fptr, "%d", &intVar);
 	}
 	fclose(fptr);
