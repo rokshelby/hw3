@@ -36,7 +36,7 @@ int main(int argc, char ** argv)
 	i = 0;
 	for(i = 0; i < 5; i++)
 	{
-		#ifdef RAKEEMISAWESOME
+		#ifdef NOTIMETEST
 		waitRandom();
 		fprintf(stderr, "Pid %d is requesting to enter critical section at clock %d nano %d \n", getpid(), GetClockTime(shid), GetNanoTime(shid));
 		#endif
@@ -45,14 +45,14 @@ int main(int argc, char ** argv)
 		sem_wait(mutex);
 		
 		
-		#ifdef RAKEEMISAWESOME
+		#ifdef NOTIMETEST
 		sleep(1);
 		fprintf(stderr, "Pid %d is in critical section at clock %d nano %d \n", getpid(), GetClockTime(shid), GetNanoTime(shid));
 		#endif
 		
 		writeFile(size, index, total);
 		
-		#ifdef RAKEEMISAWEOME
+		#ifdef NOTIMETEST
 		fprintf(stderr, "Pid %d is exiting critical section at clock %d nano %d \n", getpid(), GetClockTime(shid), GetNanoTime(shid));
 		#endif
 		

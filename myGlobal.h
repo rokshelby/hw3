@@ -23,7 +23,7 @@
 	int GetInputPlaceInSharedMem(int);
 	char * GetString(int, char*);	
 	extern int arr;
-	//#define NOTIMETEST 1
+	#define NOTIMETEST 1
 	const char inputFile[] = "./InputNumberFile.txt";
 	const char sharedKey[] = "./master.c";
 	const char outputFile[] = "./adder_log";
