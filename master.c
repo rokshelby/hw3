@@ -21,32 +21,33 @@ char * getSharedInputFile();
 void GenerateRandomNumbers(int);
 int ReadInputFile();
 int GetInputPlaceInSharedMem(int);
-void ResetNumbers();
-void MethodOne(int, int, int);
-void MethodTwo(int, int,int );
+void ResetNumbers(int);
+void MethodOne(int, int);
+void MethodTwo(int, int);
 char * GetString(int, char*);
 void RelaxTheCells();
 void PrintArray();
 int GetBinZero();
-void IncrementTime(int);
-int GetNanoTime(int);
-int GetClockTime(int);
+void IncrementTime();
+int GetNanoTime();
+int GetClockTime();
 
 void catch_signal(int);
 
 pid_t pids[20];
 sem_t * mutex;
-int shared_id1;
+int * shared_id1;
 int main(int argc, char ** argv)
 {
 	
+
 	int numElem = 8;
 	//	int numElem = 64
 	int getNumberOfPairs;
 	shared_id1 = 0;	
 	int method1Summation = 0;
 	int method2Summation = 0;
-
+	shared_id1 = (int*)malloc(sizeof(int) * 40000);
 	struct itimerval myTime, method1Time, method2Time;
 	
 	signal(SIGALRM, catch_signal);
@@ -81,10 +82,10 @@ int main(int argc, char ** argv)
 	getNumberOfPairs = ReadInputFile();
         
 	printf("Start Method1\n");
-	shared_id1 = GetInputPlaceInSharedMem(getNumberOfPairs);
+	*shared_id1 = GetInputPlaceInSharedMem(getNumberOfPairs);
 	setitimer(ITIMER_REAL, &myTime, NULL);
-	MethodOne(numElem,2, shared_id1); //method 1;
-	method1Summation = GetBinZero(shared_id1);
+	MethodOne(numElem,2); //method 1;
+	method1Summation = GetBinZero();
 	
 	getitimer(ITIMER_REAL, &method1Time);
 	
@@ -94,26 +95,27 @@ int main(int argc, char ** argv)
 	
 	printf("Start Method2\n");
 	int binSize = ceil(getNumberOfPairs/(log10(getNumberOfPairs)/log10(2)));
-	ResetNumbers(shared_id1, getNumberOfPairs);
-	MethodTwo(numElem, binSize, shared_id1);
-	method2Summation = GetBinZero(shared_id1);
+	ResetNumbers(getNumberOfPairs);
+	MethodTwo(numElem, binSize);
+	method2Summation = GetBinZero();
 	getitimer(ITIMER_REAL, &method2Time);
 	//PrintArray(numElem, shared_id1);
 
 	printf("Method 1 Summation %d completed in %ld seconds and %ld micro seconds\n",method1Summation,method1Time.it_interval.tv_sec - method1Time.it_value.tv_sec, method1Time.it_value.tv_usec);
 	printf("Method 2 Summation %d completed in %ld seconds and %ld micro seconds\n",method2Summation,method1Time.it_value.tv_sec - method2Time.it_value.tv_sec, method1Time.it_value.tv_usec - method2Time.it_value.tv_usec);
 
-	if(shmctl(shared_id1, IPC_RMID, NULL) < 0)
+	if(shmctl(*shared_id1, IPC_RMID, NULL) < 0)
 		fprintf(stderr, "Shared memory was not deallocated: remove it manually\n");
 	
 	sem_destroy(mutex);	
+	free(shared_id1);
 	return 0;
 }
 
 
-void PrintArray(int size, int shared_id)
+void PrintArray(int size)
 {
-        int * arr = (int*)shmat(shared_id, NULL, 0);
+        int * arr = (int*)shmat(*shared_id1, NULL, 0);
         int x = 0;
         for(x = 2; x < size+2; x++)
         {
@@ -135,28 +137,31 @@ void catch_signal(int sig)
 	}
 	int i = 0;
 	sem_close(mutex);
-	shmctl(shared_id1, IPC_RMID, NULL);
+	shmctl(*shared_id1, IPC_RMID, NULL);
 	for(i = 0; i < 20; i++)
 		kill(pids[i], SIGKILL);
 	kill(getpid(), SIGKILL);
+	free(shared_id1);
 	exit(0);	
 
 	
 }
 
 
-int GetBinZero(int shared_id)
+int GetBinZero()
 {
-	int returnInt;
-	int * arr = (int*)shmat(shared_id, NULL, 0);
+	int returnInt = 0;
+	int * arr = (int*)shmat(*shared_id1, NULL, 0);
+	//printf("Shared ID %d\n",*shared_id1);
 	returnInt = arr[2];
 	shmdt(arr);
 	return returnInt;
 }
 
-void IncrementTime(int shared_id)
+void IncrementTime()
 {
-	int * arr = (int*)shmat(shared_id, NULL, 0);
+	//printf("Shared ID %d\n", *shared_id1);
+	int * arr = (int*)shmat(*shared_id1, NULL, 0);
 	arr[0] = arr[0] + 10000;
 	if(arr[0] > 1000000000)
 	{
@@ -166,27 +171,27 @@ void IncrementTime(int shared_id)
 	shmdt(arr);	
 }
 
-int GetNanoTime(int shared_id)
+int GetNanoTime()
 {
 
 	int nanoTime = 0;
-	int * arr = (int*)shmat(shared_id, NULL, 0);
+	int * arr = (int*)shmat(*shared_id1, NULL, 0);
 	nanoTime = arr[0];
 	shmdt(arr);
 	return nanoTime;
 }
 
-int GetClockTime(int shared_id)
+int GetClockTime()
 {
 	int clockTime = 0;
-	int * arr = (int*)shmat(shared_id, NULL, 0);
+	int * arr = (int*)shmat(*shared_id1, NULL, 0);
 	clockTime = arr[1];
 	shmdt(arr);
 	return clockTime;
 }
 
 
-void MethodTwo(int size, int binSize, int shared_id)
+void MethodTwo(int size, int binSize)
 {
 
 	int maxAllowed = 20;
@@ -225,14 +230,14 @@ void MethodTwo(int size, int binSize, int shared_id)
 					anotherTemp = tempSize;
 				
 				
-			        printf("Creation of child process was successful %d\n", getpid());
+			       // printf("Creation of child process was successful %d\n", getpid());
                                 char * st;
                                 st = (char*)malloc(sizeof(char) * 10);
                                 sprintf(st, "%d", ((bins*binSize)));
                                 strcpy(argToPass[0], GetString(strlen(st), st));
                                 sprintf(st, "%d", anotherTemp);
                                 strcpy(argToPass[1], GetString(strlen(st), st));
-                                sprintf(st, "%d", shared_id);
+                                sprintf(st, "%d", *shared_id1);
                                 strcpy(argToPass[2], GetString(strlen(st), st));
                                 argToPass[3] = NULL;
                                 intExec = execv("bin_adder",argToPass);
@@ -241,7 +246,7 @@ void MethodTwo(int size, int binSize, int shared_id)
 			}
 			else
 			{
-				printf("Parent sent off child to add two numbers %d and the bin is %d\n", pid, bins);
+				//printf("Parent sent off child to add two numbers %d and the bin is %d\n", pid, bins);
 				pids[bins] = pid;
 
 
@@ -268,18 +273,18 @@ void MethodTwo(int size, int binSize, int shared_id)
 			}
                         else if(pida > 0)
 			{
-                            printf("child is finished %d\n", pida);
+                            //printf("child is finished %d\n", pida);
                             aliveChilds--;
                         }
                  }
- 		IncrementTime(shared_id);                               
+ 		IncrementTime();                               
 	}while(aliveChilds > 0);
-	RelaxTheCells(bins, binSize, shared_id);	
-	MethodOne(bins, 2, shared_id);
+	RelaxTheCells(bins, binSize);	
+	MethodOne(bins, 2);
 
 }
 
-void MethodOne(int size,int binSize, int shared_id)
+void MethodOne(int size,int binSize)
 {
 	int k = 0;
 	int pid;
@@ -300,7 +305,7 @@ void MethodOne(int size,int binSize, int shared_id)
 	i = 0;
 
 	do
-	{			
+	{//	printf("Shared _id %d\n",*shared_id1);	
 		//printf("maxAllowed %d aliveChilds %d tempSize %d\n",maxAllowed, aliveChilds, tempSize);
 		do
 		{
@@ -322,14 +327,14 @@ void MethodOne(int size,int binSize, int shared_id)
 	                                else
 	                                	anotherTemp = tempSize;
 	
-					printf("Creation of child process was successful %d\n", getpid());
+					//printf("Creation of child process was successful %d\n", getpid());
 					char * st;
 					st = (char*)malloc(sizeof(char) * 10);
 					sprintf(st, "%d", (bins *binSize));
 					strcpy(argToPass[0], GetString(strlen(st), st));
 					sprintf(st, "%d", anotherTemp);
 					strcpy(argToPass[1], GetString(strlen(st), st));
-					sprintf(st, "%d", shared_id);
+					sprintf(st, "%d", *shared_id1);
 					strcpy(argToPass[2], GetString(strlen(st), st));
 					argToPass[3] = NULL;
 					intExec = execv("bin_adder",argToPass);
@@ -340,7 +345,7 @@ void MethodOne(int size,int binSize, int shared_id)
 				else if(pid > 0)
 				{
 					aliveChilds++;
-					printf("Parent sent off child to add two numbers %d and the bin is %d\n", pid, bins);
+				//	printf("Parent sent off child to add two numbers %d and the bin is %d\n", pid, bins);
 					pids[bins] = pid;
 		 	                bins++;
 		                	tempSize = tempSize - binSize;
@@ -359,20 +364,20 @@ void MethodOne(int size,int binSize, int shared_id)
 				}
 				else if(pida > 0)
 				{
-					printf("child is finished %d\n", pida);
+					//printf("child is finished %d\n", pida);
 					aliveChilds--;
 					if(tempSize <= 0 && aliveChilds == 0)
 						innerExitFlag = 1;
 				}
 			}
-			IncrementTime(shared_id);
+			IncrementTime();
 		}while(innerExitFlag == 0 && aliveChilds > 0);
 		//PrintArray(size, shared_id);
 
 		if(tempSize <= 0)
 		{	
 			
-			RelaxTheCells(bins, 2, shared_id);
+			RelaxTheCells(bins, 2);
 			innerExitFlag = 0;
 			tempSize = bins;
 			if(bins == 1)
@@ -385,9 +390,9 @@ void MethodOne(int size,int binSize, int shared_id)
 	}while(innerExitFlag == 0 && exitFlag == 0);
 
 }
-void RelaxTheCells(int bins, int binSize, int id)
+void RelaxTheCells(int bins, int binSize)
 {
-	int * arr = (int*)shmat(id, NULL, 0);
+	int * arr = (int*)shmat(*shared_id1, NULL, 0);
 	int i;
 	for(i = 0; i <bins; i++)
 	{	
@@ -429,11 +434,11 @@ int GetInputPlaceInSharedMem(int num)
 	return shmid;
 }
 
-void ResetNumbers(int id, int num)
+void ResetNumbers(int num)
 {
 	int i = 0;
 	int intVar = 0;
-	int * arr = (int*)shmat(id, NULL, 0);
+	int * arr = (int*)shmat(*shared_id1, NULL, 0);
 	FILE * fptr;
 	if((fptr = fopen(inputFile, "r")) == NULL)
 	{

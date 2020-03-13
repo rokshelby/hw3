@@ -36,14 +36,27 @@ int main(int argc, char ** argv)
 	i = 0;
 	for(i = 0; i < 5; i++)
 	{
+		#ifdef RAKEEMISAWESOME
 		waitRandom();
 		fprintf(stderr, "Pid %d is requesting to enter critical section at clock %d nano %d \n", getpid(), GetClockTime(shid), GetNanoTime(shid));
+		#endif
+		
+
 		sem_wait(mutex);
-		//sleep(6); //gives better adder_log results
+		
+		
+		#ifdef RAKEEMISAWESOME
 		sleep(1);
 		fprintf(stderr, "Pid %d is in critical section at clock %d nano %d \n", getpid(), GetClockTime(shid), GetNanoTime(shid));
+		#endif
+		
 		writeFile(size, index, total);
+		
+		#ifdef RAKEEMISAWEOME
 		fprintf(stderr, "Pid %d is exiting critical section at clock %d nano %d \n", getpid(), GetClockTime(shid), GetNanoTime(shid));
+		#endif
+		
+
 		sem_post(mutex);
 	}
 	

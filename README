@@ -25,6 +25,10 @@ type 'master xx'
 
 xx = some number that you like
 
+if running time test, got to myGlobal.h
+COMMENT out #define NOTIMETEST 1
+
+if not UNCOMMENT #define NOTIMETEST 1 
 
 
 
