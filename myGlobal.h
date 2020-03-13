@@ -15,18 +15,44 @@
 #include <pthread.h>
 #include <fcntl.h>
 #include <math.h>	
-	void sig_handler(int);
 	void GenerateRandomNumbers(int);
 	void PerformSummation();
-	void printSharedInt();
+	void PrintSharedInt();
 	int ReadInputFile();
 	int GetInputPlaceInSharedMem(int);
-	char * GetString(int, char*);	
-	extern int arr;
-	#define NOTIMETEST 1
+
+	int GetSharedIDFromFile();
+	
+	char * GetSharedKey();
+	int GetSharedInt();
+	char * GetSharedInputFile();
+	void GenerateRandomNumbers(int);
+	int ReadInputFile();	
+	int GetInputPlaceInSharedMem(int);
+	void ResetNumbers(int);
+	void MethodOne(int, int);
+	void MethodTwo(int, int);
+	void RelaxTheCells();
+	void PrintArray();
+	int GetBinZero();
+	void SetSharedID(int);
+	int ReadArgument(char*);
+	
+	void CatchSignal(int);
+
+	pid_t pids[20];
+	sem_t * mutex;
+	int sharedID;
+
+	int * arr;
+
+
+
+	//#define NOTIMETEST 1
 	const char inputFile[] = "./InputNumberFile.txt";
 	const char sharedKey[] = "./master.c";
 	const char outputFile[] = "./adder_log";
 	const char semaphoreName[] = "semSignal";
+	const char sharedIDFile[] = "./sharedID.txt";
 	const int sharedInt = 63;
 #endif	

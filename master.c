@@ -11,47 +11,20 @@
 // 
 
 #include "myGlobal.h"
-
-
-void setSharedID();
-int getSharedID();
-char* getSharedKey();
-int getSharedInt();
-char * getSharedInputFile();
-void GenerateRandomNumbers(int);
-int ReadInputFile();
-int GetInputPlaceInSharedMem(int);
-void ResetNumbers(int);
-void MethodOne(int, int);
-void MethodTwo(int, int);
-char * GetString(int, char*);
-void RelaxTheCells();
-void PrintArray();
-int GetBinZero();
-void IncrementTime();
-int GetNanoTime();
-int GetClockTime();
-
-void catch_signal(int);
-
-pid_t pids[20];
-sem_t * mutex;
-int * shared_id1;
+int sharedID;
 int main(int argc, char ** argv)
 {
 	
 
-	int numElem = 8;
+	int numElem = 64;
 	//	int numElem = 64
-	int getNumberOfPairs;
-	shared_id1 = 0;	
+	
 	int method1Summation = 0;
 	int method2Summation = 0;
-	shared_id1 = (int*)malloc(sizeof(int) * 40000);
 	struct itimerval myTime, method1Time, method2Time;
 	
-	signal(SIGALRM, catch_signal);
-	signal(SIGINT, catch_signal);
+	signal(SIGALRM, CatchSignal);
+	signal(SIGINT, CatchSignal);
 
 	myTime.it_value.tv_sec = 100;
 	myTime.it_value.tv_usec = 0;
@@ -59,30 +32,23 @@ int main(int argc, char ** argv)
 	
 	mutex = sem_open(semaphoreName, O_CREAT|O_EXCL, 0666, 63);
 	//clear the output file
+	
 	FILE * fptr;	
 	fptr = 	fopen(outputFile, "w");
 	fclose(fptr);
 	//get the number of ints;
 	if(argc > 1)
 	{
-		sscanf(argv[1], "%d", &numElem);
-		if(numElem < 64)
-		{
-			numElem = 64;
-		}
-
-		if(numElem % 2 != 0)
-		numElem++;
-		
+		numElem = ReadArgument(argv[1]);
 	}
-
-
 	
 	GenerateRandomNumbers(numElem);
-	getNumberOfPairs = ReadInputFile();
+	ReadInputFile();
         
 	printf("Start Method1\n");
-	*shared_id1 = GetInputPlaceInSharedMem(getNumberOfPairs);
+	sharedID = GetInputPlaceInSharedMem(numElem);
+	SetSharedID(sharedID);
+	
 	setitimer(ITIMER_REAL, &myTime, NULL);
 	MethodOne(numElem,2); //method 1;
 	method1Summation = GetBinZero();
@@ -94,8 +60,8 @@ int main(int argc, char ** argv)
 
 	
 	printf("Start Method2\n");
-	int binSize = ceil(getNumberOfPairs/(log10(getNumberOfPairs)/log10(2)));
-	ResetNumbers(getNumberOfPairs);
+	int binSize = ceil(numElem/(log10(numElem)/log10(2)));
+	ResetNumbers(numElem);
 	MethodTwo(numElem, binSize);
 	method2Summation = GetBinZero();
 	getitimer(ITIMER_REAL, &method2Time);
@@ -104,20 +70,28 @@ int main(int argc, char ** argv)
 	printf("Method 1 Summation %d completed in %ld seconds and %ld micro seconds\n",method1Summation,method1Time.it_interval.tv_sec - method1Time.it_value.tv_sec, method1Time.it_value.tv_usec);
 	printf("Method 2 Summation %d completed in %ld seconds and %ld micro seconds\n",method2Summation,method1Time.it_value.tv_sec - method2Time.it_value.tv_sec, method1Time.it_value.tv_usec - method2Time.it_value.tv_usec);
 
-	if(shmctl(*shared_id1, IPC_RMID, NULL) < 0)
+	if(shmctl(sharedID, IPC_RMID, NULL) < 0)
 		fprintf(stderr, "Shared memory was not deallocated: remove it manually\n");
 	
+	remove(sharedIDFile);
+	remove(inputFile);
 	sem_destroy(mutex);	
-	free(shared_id1);
+
 	return 0;
 }
 
+void IncrementTime()
+{
+
+
+
+}
 
 void PrintArray(int size)
 {
-        int * arr = (int*)shmat(*shared_id1, NULL, 0);
+        arr = (int*)shmat(sharedID, NULL, 0);
         int x = 0;
-        for(x = 2; x < size+2; x++)
+        for(x = 0; x < size; x++)
         {
                 printf("%d ", arr[x]);
         }
@@ -125,7 +99,23 @@ void PrintArray(int size)
         shmdt(arr);
 }
 
-void catch_signal(int sig)
+int ReadArgument(char * str)
+{
+	int numElem;
+        sscanf(str, "%d", &numElem);
+        if(numElem < 64)
+        	{
+                        numElem = 64;
+                }
+
+        if(numElem % 2 != 0)
+        	numElem++;
+
+	return numElem;
+
+}
+
+void CatchSignal(int sig)
 {
 	if(sig == SIGINT)
 	{
@@ -137,11 +127,10 @@ void catch_signal(int sig)
 	}
 	int i = 0;
 	sem_close(mutex);
-	shmctl(*shared_id1, IPC_RMID, NULL);
+	shmctl(sharedID, IPC_RMID, NULL);
 	for(i = 0; i < 20; i++)
 		kill(pids[i], SIGKILL);
 	kill(getpid(), SIGKILL);
-	free(shared_id1);
 	exit(0);	
 
 	
@@ -151,44 +140,13 @@ void catch_signal(int sig)
 int GetBinZero()
 {
 	int returnInt = 0;
-	int * arr = (int*)shmat(*shared_id1, NULL, 0);
+	arr = (int*)shmat(sharedID, NULL, 0);
 	//printf("Shared ID %d\n",*shared_id1);
-	returnInt = arr[2];
+	returnInt = arr[0];
 	shmdt(arr);
 	return returnInt;
 }
 
-void IncrementTime()
-{
-	//printf("Shared ID %d\n", *shared_id1);
-	int * arr = (int*)shmat(*shared_id1, NULL, 0);
-	arr[0] = arr[0] + 10000;
-	if(arr[0] > 1000000000)
-	{
-		arr[1] = arr[1] + 1;
-		arr[0] = 0;
-	}		
-	shmdt(arr);	
-}
-
-int GetNanoTime()
-{
-
-	int nanoTime = 0;
-	int * arr = (int*)shmat(*shared_id1, NULL, 0);
-	nanoTime = arr[0];
-	shmdt(arr);
-	return nanoTime;
-}
-
-int GetClockTime()
-{
-	int clockTime = 0;
-	int * arr = (int*)shmat(*shared_id1, NULL, 0);
-	clockTime = arr[1];
-	shmdt(arr);
-	return clockTime;
-}
 
 
 void MethodTwo(int size, int binSize)
@@ -206,9 +164,9 @@ void MethodTwo(int size, int binSize)
 	int k = 0;
 	int i = 0;
 	printf("Method Two binSize %d\n",binSize);
-        char ** argToPass = malloc(sizeof(char *) * 2);
-        for(i = 0; i < 3; i++)
-                argToPass[i] = malloc(sizeof(int) * 8);
+        char ** argToPass = (char**)malloc(sizeof(char *) * 2);
+        for(i = 0; i < 2; i++)
+                argToPass[i] = (char*)malloc(sizeof(int) * 8);
         i = 0;
 
 	do
@@ -228,20 +186,19 @@ void MethodTwo(int size, int binSize)
 				}
 				else
 					anotherTemp = tempSize;
-				
-				
+	
+
 			       // printf("Creation of child process was successful %d\n", getpid());
                                 char * st;
                                 st = (char*)malloc(sizeof(char) * 10);
                                 sprintf(st, "%d", ((bins*binSize)));
-                                strcpy(argToPass[0], GetString(strlen(st), st));
+                                strcpy(argToPass[0], st);
                                 sprintf(st, "%d", anotherTemp);
-                                strcpy(argToPass[1], GetString(strlen(st), st));
-                                sprintf(st, "%d", *shared_id1);
-                                strcpy(argToPass[2], GetString(strlen(st), st));
-                                argToPass[3] = NULL;
+                                strcpy(argToPass[1], st);
+                                argToPass[2] = NULL;
                                 intExec = execv("bin_adder",argToPass);
                                 printf("Exec %d\n", intExec);
+				free(st);
                                 exit(0);
 			}
 			else
@@ -277,8 +234,9 @@ void MethodTwo(int size, int binSize)
                             aliveChilds--;
                         }
                  }
- 		IncrementTime();                               
+ 	
 	}while(aliveChilds > 0);
+	free(argToPass);
 	RelaxTheCells(bins, binSize);	
 	MethodOne(bins, 2);
 
@@ -298,10 +256,10 @@ void MethodOne(int size,int binSize)
 	int exitFlag = 0;
 	int innerExitFlag = 0;
 	int anotherTemp = 0;
-	char ** argToPass = malloc(sizeof(char *) * 2);
+	char ** argToPass = (char**)malloc(sizeof(char *) * 2);
 	int i = 0;
-	for(i = 0; i < 3; i++)
-		argToPass[i] = malloc(sizeof(int) * 8);
+	for(i = 0; i < 2; i++)
+		argToPass[i] = (char*)malloc(sizeof(int) * 8);
 	i = 0;
 
 	do
@@ -309,7 +267,7 @@ void MethodOne(int size,int binSize)
 		//printf("maxAllowed %d aliveChilds %d tempSize %d\n",maxAllowed, aliveChilds, tempSize);
 		do
 		{
-		 
+			 
 			if(maxAllowed > aliveChilds && tempSize > 0)
 			{		
 				pid = fork();
@@ -329,16 +287,15 @@ void MethodOne(int size,int binSize)
 	
 					//printf("Creation of child process was successful %d\n", getpid());
 					char * st;
-					st = (char*)malloc(sizeof(char) * 10);
+					st = (char*)malloc(sizeof(char) * 8);
 					sprintf(st, "%d", (bins *binSize));
-					strcpy(argToPass[0], GetString(strlen(st), st));
+					strcpy(argToPass[0], st);
 					sprintf(st, "%d", anotherTemp);
-					strcpy(argToPass[1], GetString(strlen(st), st));
-					sprintf(st, "%d", *shared_id1);
-					strcpy(argToPass[2], GetString(strlen(st), st));
-					argToPass[3] = NULL;
+					strcpy(argToPass[1], st);
+					argToPass[2] = NULL;
 					intExec = execv("bin_adder",argToPass);
 					printf("Exec %d\n", intExec);
+					free(st);
 					exit(0);
 	
 				}
@@ -370,13 +327,13 @@ void MethodOne(int size,int binSize)
 						innerExitFlag = 1;
 				}
 			}
-			IncrementTime();
+
 		}while(innerExitFlag == 0 && aliveChilds > 0);
 		//PrintArray(size, shared_id);
 
 		if(tempSize <= 0)
 		{	
-			
+			//			printf("other shared id %d\n", share	
 			RelaxTheCells(bins, 2);
 			innerExitFlag = 0;
 			tempSize = bins;
@@ -388,19 +345,30 @@ void MethodOne(int size,int binSize)
 			bins = 0;
 		}
 	}while(innerExitFlag == 0 && exitFlag == 0);
+	free(argToPass);
 
 }
 void RelaxTheCells(int bins, int binSize)
 {
-	int * arr = (int*)shmat(*shared_id1, NULL, 0);
+	sharedID = GetSharedIDFromFile();
+	arr = (int*)shmat(sharedID, NULL, 0);
 	int i;
 	for(i = 0; i <bins; i++)
 	{	
-		arr[i+2] = arr[(i*binSize)+2];
+		arr[i] = arr[(i*binSize)];
 	}	
 	shmdt(arr);
 }
 
+int GetSharedIDFromFile()
+{
+        FILE * fptr;
+        int num = 0;
+        fptr = fopen(sharedIDFile, "r");
+        fscanf(fptr,"%d", &num);
+	fclose(fptr);
+        return num;
+}
 
 
 int GetInputPlaceInSharedMem(int num)
@@ -409,9 +377,11 @@ int GetInputPlaceInSharedMem(int num)
 	int i = 0;
 	int  intVar = 0;
 	key_t key = ftok(sharedKey, sharedInt);
-	int shmid = shmget(key, (num + 2) * sizeof(int), 0666|IPC_CREAT);
+	//int shmid = shmget(key, (num + 2) * sizeof(int), 0666|IPC_CREAT);
+	int shmid = shmget(key, num*  sizeof(int), 0666|IPC_CREAT);
+	
 	printf("print shmid %d\n", shmid);
-	int * arr = (int*) shmat(shmid,  NULL ,0);
+	arr = (int*) shmat(shmid,NULL ,0);
 	arr[0] = 0;
 	FILE * fptr;
 	if((fptr = fopen(inputFile, "r")) == NULL)
@@ -422,7 +392,7 @@ int GetInputPlaceInSharedMem(int num)
 	ret = fscanf(fptr, "%d", &intVar);
 	arr[0] = 0;
 	arr[1] = 0;
-	for(i = 2;ret != EOF && i < num+2; i++)
+	for(i = 0;ret != EOF && i < num; i++)
 	{
 		arr[i] = intVar;
 		ret = fscanf(fptr, "%d", &intVar);
@@ -434,11 +404,29 @@ int GetInputPlaceInSharedMem(int num)
 	return shmid;
 }
 
+
+void SetSharedID(int num)
+{
+
+	FILE * fptr;
+	if((fptr = fopen(sharedIDFile, "w")) == NULL)
+	{
+		perror("file problems\n");
+		exit(1);
+	}
+	
+	fprintf(fptr, "%d",num);
+	fclose(fptr);
+
+
+
+}
+
 void ResetNumbers(int num)
 {
 	int i = 0;
 	int intVar = 0;
-	int * arr = (int*)shmat(*shared_id1, NULL, 0);
+	arr = (int*)shmat(sharedID, NULL, 0);
 	FILE * fptr;
 	if((fptr = fopen(inputFile, "r")) == NULL)
 	{
@@ -446,7 +434,7 @@ void ResetNumbers(int num)
 		exit(1);
 	}
 	fscanf(fptr, "%d", &intVar);
-	for(i = 2; i < num+2; i++)
+	for(i = 0; i < num; i++)
 	{
 		arr[i] = intVar;
 		fscanf(fptr, "%d", &intVar);
@@ -484,17 +472,7 @@ int ReadInputFile()
 	free(num);
 	return count;
 }
-char * GetString(int size, char * str)
- {
-         int i = 0;
-         char * returnStr = malloc(sizeof(char) * strlen(str));
- 	 for(i = 0; i < strlen(str); i++)
- 	 {
- 	 	returnStr[i] = str[i];
-         }
- 	 returnStr[strlen(str)] = 0;
- 	 return returnStr;
-}
+
 void GenerateRandomNumbers(int num)
 {
 	srand(time(0)); //random seed
@@ -512,7 +490,7 @@ void GenerateRandomNumbers(int num)
 	{
 		for(i = 0; i < num; i++)
 		{
-			tempInt = rand() %256;
+			tempInt = rand() % 256;
 			total = total + tempInt;
 			fprintf(fptr,"%d\n", tempInt);
 		}	

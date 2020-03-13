@@ -2,86 +2,66 @@
 
 void waitRandom();
 void writeFile();
-int GetNanoTime(int);
-int GetClockTime(int);
+
 int main(int argc, char ** argv)
 {
 	
 	int i;
 	int index = 0;
 	int size = 0;
-	int shid = 0;
+	
 	sscanf(argv[0], "%d", &index);
 	sscanf(argv[1], "%d", &size);
-	sscanf(argv[2], "%d", &shid);
-
-	int * arr = (int*) shmat(shid, NULL, 0);
+	
+	sharedID = GetSharedIDFromFile();
+	//	printf("Shared id %d\n", sharedID);
+	arr = (int*) shmat(sharedID, NULL, 0);
 	int total  = 0;
-	//	printf("INDEX %d ",index);
+
 	for(i = 0; i < size; i++)
 	{
-		total = total + arr[index + i + 2];
+		total = total + arr[index + i];
 	}
-	//printf("Total %d\n", total);
-	arr[index+2] = total;
-	//printf("UPDATE\n");
-	//for(i = 0; i < 8; i++)
-	//{	
-	//	printf("%d ", arr[i]);
-	//}
-	//printf("\n");
+	arr[index] = total;
+
 	shmdt(arr);
 	sem_t* mutex = sem_open(semaphoreName, O_EXCL, 0666, 63);		
-	//sem_unlink(semaphoreName);
+
 	i = 0;
 	for(i = 0; i < 5; i++)
 	{
 		#ifdef NOTIMETEST
 		waitRandom();
-		fprintf(stderr, "Pid %d is requesting to enter critical section at clock %d nano %d \n", getpid(), GetClockTime(shid), GetNanoTime(shid));
+		fprintf(stderr, "Pid %d is requesting to enter critical section at clock  nano  \n", getpid());
 		#endif
-		
 
 		sem_wait(mutex);
 		
-		
 		#ifdef NOTIMETEST
 		sleep(1);
-		fprintf(stderr, "Pid %d is in critical section at clock %d nano %d \n", getpid(), GetClockTime(shid), GetNanoTime(shid));
+		fprintf(stderr, "Pid %d is in critical section at clock  nano  \n", getpid());
 		#endif
 		
 		writeFile(size, index, total);
 		
 		#ifdef NOTIMETEST
-		fprintf(stderr, "Pid %d is exiting critical section at clock %d nano %d \n", getpid(), GetClockTime(shid), GetNanoTime(shid));
+		fprintf(stderr, "Pid %d is exiting critical section at clock  nano  \n", getpid());
 		#endif
 		
-
 		sem_post(mutex);
 	}
-	
 	sem_close(mutex);	
 	return 0;
 }
-int GetNanoTime(int shared_id)
+int GetSharedIDFromFile()
 {
-
-        int nanoTime = 0;
-        int * arr = (int*)shmat(shared_id, NULL, 0);
-        nanoTime = arr[0];
-        shmdt(arr);
-        return nanoTime;
+	FILE * fptr;
+	int num = 0;
+	fptr = fopen(sharedIDFile, "r");
+	fscanf(fptr,"%d", &num);
+	fclose(fptr);
+	return num;
 }
-
-int GetClockTime(int shared_id)
-{
-        int clockTime = 0;
-        int * arr = (int*)shmat(shared_id, NULL, 0);
-        clockTime = arr[1];
-        shmdt(arr);
-        return clockTime;
-}
-
 void writeFile(int size, int index, int total)
 {
 	FILE * fptr;
@@ -94,7 +74,6 @@ void writeFile(int size, int index, int total)
 	{
 		fprintf(fptr, "Pid %d Index %d Size %d \n", getpid(), index, size);
 	}
-	
 	fclose(fptr);
 
 }
