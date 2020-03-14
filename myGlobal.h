@@ -48,11 +48,11 @@
 
 
 
-	#define NOTIMETEST 1
+	//#define NOTIMETEST
 	const char inputFile[] = "./InputNumberFile.txt";
 	const char sharedKey[] = "./master.c";
 	const char outputFile[] = "./adder_log";
-	const char semaphoreName[] = "semSignal";
+	const char semaphoreName[] = "semSignal2";
 	const char sharedIDFile[] = "./sharedID.txt";
 	const int sharedInt = 63;
 #endif	

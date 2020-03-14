@@ -1,5 +1,6 @@
 CC = gcc 
-CFLAGS = -g -Wall
+#CFLAGS = -g -Wall
+CFLAGS = -g -Wall -DNOTIMETEST
 TARGET = master
 TARGET1 = bin_adder
 OBJS = master.o

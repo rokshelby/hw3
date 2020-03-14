@@ -13,25 +13,25 @@
 #include "myGlobal.h"
 int sharedID;
 struct itimerval myTime;
+struct timerval start;
+time_t t;
 int main(int argc, char ** argv)
 {
-	
-
-	int numElem = 8;
-	//	int numElem = 64
-	
+	int numElem;
 	int method1Summation = 0;
 	int method2Summation = 0;
-	struct itimerval method1Time, method2Time;
 	
+	struct timeval stop, start;
+	
+		
 	signal(SIGALRM, CatchSignal);
 	signal(SIGINT, CatchSignal);
-
 	myTime.it_value.tv_sec = 100;
 	myTime.it_value.tv_usec = 0;
 	myTime.it_interval = myTime.it_value;
-	
-	mutex = sem_open(semaphoreName, O_CREAT|O_EXCL, 0666, 63);
+	time_t method1, method2,endMethod;
+	time(&t);
+	sem_t * mutex = sem_open(semaphoreName, O_CREAT|O_EXCL, 0666, 1000);
 	//clear the output file
 	
 	FILE * fptr;	
@@ -42,46 +42,52 @@ int main(int argc, char ** argv)
 	{
 		numElem = ReadArgument(argv[1]);
 	}
-	
+	else
+		numElem = 8;
+
 	GenerateRandomNumbers(numElem);
 	ReadInputFile();
-        
-	printf("Start Method1\n");
+
+	printf("Start Method1 at %s \n", ctime(&method1));
+	
 	sharedID = GetInputPlaceInSharedMem(numElem);
 	SetSharedID(sharedID);
 	
 	setitimer(ITIMER_REAL, &myTime, NULL);
+	time(&method1);
 	MethodOne(numElem,2); //method 1;
 	method1Summation = GetBinZero();
 	
-	getitimer(ITIMER_REAL, &method1Time);
 
-	//PrintArray(numElem, shared_id1);
 
-	printf("Start Method2\n");
+
+	printf("Start Method2 at %s \n", ctime(&method2));
 	int binSize = ceil(numElem/(log10(numElem)/log10(2)));
 	ResetNumbers(numElem);
+	time(&method2);
 	MethodTwo(numElem, binSize);
+	time(&endMethod);
 	method2Summation = GetBinZero();
-	getitimer(ITIMER_REAL, &method2Time);
-	//PrintArray(numElem, shared_id1);
+	
 
-	printf("Method 1 Summation %d completed in %ld seconds and %ld micro seconds\n",method1Summation,method1Time.it_interval.tv_sec - method1Time.it_value.tv_sec, method1Time.it_value.tv_usec);
-	printf("Method 2 Summation %d completed in %ld seconds and %ld micro seconds\n",method2Summation,method1Time.it_value.tv_sec - method2Time.it_value.tv_sec, method1Time.it_value.tv_usec - method2Time.it_value.tv_usec);
 
+
+
+	printf("Method 1 Summation %d completed in %f seconds\n",method1Summation,difftime(method2,method1));
+	printf("Method 2 Summation %d completed in %f seconds\n",method2Summation,difftime(endMethod,method2));
+
+	
 	if(shmctl(sharedID, IPC_RMID, NULL) < 0)
 		fprintf(stderr, "Shared memory was not deallocated: remove it manually\n");
 	
 	remove(sharedIDFile);
 	remove(inputFile);
 	sem_destroy(mutex);	
-
 	return 0;
 }
 
 void PrintArray(int size)
 {
-
 	sharedID = GetSharedIDFromFile();
         arr = (int*)shmat(sharedID, NULL, 0);
         int x = 0;
@@ -97,27 +103,17 @@ int ReadArgument(char * str)
 {
 	int numElem;
         sscanf(str, "%d", &numElem);
-        if(numElem < 64)
-        	{
-                        numElem = 64;
-                }
-
-        if(numElem % 2 != 0)
-        	numElem++;
-
 	return numElem;
-
 }
 
 
 void UpdateTime()
 {
-	struct itimerval childTime;
-	getitimer(ITIMER_REAL, &childTime);
+	time_t childTime;
+	time(&childTime);
 	sharedID = GetSharedIDFromFile();
 	arr = (int*)shmat(sharedID, NULL, 0);
-	arr[0] = myTime.it_value.tv_sec - childTime.it_value.tv_sec;
-	arr[1] = childTime.it_value.tv_usec;
+	arr[0] = difftime(childTime, t);
 	shmdt(arr);
 
 }
@@ -139,8 +135,6 @@ void CatchSignal(int sig)
 		kill(pids[i], SIGKILL);
 	kill(getpid(), SIGKILL);
 	exit(0);	
-
-	
 }
 
 
@@ -158,7 +152,6 @@ int GetBinZero()
 
 void MethodTwo(int size, int binSize)
 {
-
 	int maxAllowed = 20;
 	int aliveChilds = 0;
 	int tempSize = size;
@@ -175,7 +168,6 @@ void MethodTwo(int size, int binSize)
         for(i = 0; i < 2; i++)
                 argToPass[i] = (char*)malloc(sizeof(int) * 8);
         i = 0;
-
 	do
 	{
 		if(maxAllowed > aliveChilds && bins < ceil(size/(binSize*1.0)))
@@ -193,7 +185,6 @@ void MethodTwo(int size, int binSize)
 				}
 				else
 					anotherTemp = tempSize;
-	
 
 			       // printf("Creation of child process was successful %d\n", getpid());
                                 char * st;
@@ -212,17 +203,11 @@ void MethodTwo(int size, int binSize)
 			{
 				//printf("Parent sent off child to add two numbers %d and the bin is %d\n", pid, bins);
 				pids[bins] = pid;
-
-
 				bins++;
 				tempSize = tempSize - binSize;
 				aliveChilds++;			
 			}
-
-	
-	
 		}
-
                 for(k = 0; k < aliveChilds; k++)
                 {
                         pida = waitpid(pida, &status, WNOHANG);
@@ -274,7 +259,7 @@ void MethodOne(int size,int binSize)
 		//printf("maxAllowed %d aliveChilds %d tempSize %d\n",maxAllowed, aliveChilds, tempSize);
 		do
 		{
-			 
+			//printf("maxAllowed, %d aliveChilds %d tempSize %d\n", maxAllowed, aliveChilds, tempSize);			 
 			if(maxAllowed > aliveChilds && tempSize > 0)
 			{		
 				pid = fork();
@@ -314,7 +299,7 @@ void MethodOne(int size,int binSize)
 		 	                bins++;
 		                	tempSize = tempSize - binSize;
 				}
-			}
+			}	
 			for(k = 0; k < aliveChilds; k++)	
 			{
 				pida = waitpid(pida, &status, WNOHANG);
@@ -334,6 +319,7 @@ void MethodOne(int size,int binSize)
 						innerExitFlag = 1;
 				}
 			}
+			
 			UpdateTime();
 		}while(innerExitFlag == 0 && aliveChilds > 0);
 		//PrintArray(size, shared_id);
