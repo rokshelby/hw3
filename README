@@ -23,12 +23,21 @@ or
 
 type 'master xx'
 
+or
+
+type 'master xx yy'
+
+
 xx = some number that you like
+yy = some number that you would like the interval time to be, default is 100
+
+
 
 if running time test, got to myGlobal.h
 COMMENT out #define NOTIMETEST 1
 
 if not UNCOMMENT #define NOTIMETEST 1 
 
-
+Method1 vs Method2 peformance
+Method 2 is faster as the number of integers grow. 
 

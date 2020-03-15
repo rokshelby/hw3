@@ -12,9 +12,12 @@
 #include <time.h>
 #include <sys/time.h>
 #include <semaphore.h>
+#include <sys/sem.h>
 #include <pthread.h>
 #include <fcntl.h>
 #include <math.h>	
+#include <limits.h>
+#include <pwd.h>
 	void GenerateRandomNumbers(int);
 	void PerformSummation();
 	void PrintSharedInt();
@@ -22,6 +25,7 @@
 	int GetInputPlaceInSharedMem(int);
 
 	int GetSharedIDFromFile();
+	int GetSemIDFromFile();
 	
 	char * GetSharedKey();
 	int GetSharedInt();
@@ -36,6 +40,7 @@
 	void PrintArray();
 	int GetBinZero();
 	void SetSharedID(int);
+	void SetSemID(int);
 	int ReadArgument(char*);
 	void UpdateTime();	
 	void CatchSignal(int);
@@ -43,7 +48,7 @@
 	pid_t pids[20];
 	sem_t * mutex;
 	int sharedID;
-
+	int semID;
 	int * arr;
 
 
@@ -54,5 +59,6 @@
 	const char outputFile[] = "./adder_log";
 	const char semaphoreName[] = "semSignal2";
 	const char sharedIDFile[] = "./sharedID.txt";
+	const char semIDFile[] = "./semID.txt";
 	const int sharedInt = 63;
 #endif	

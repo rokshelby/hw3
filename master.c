@@ -11,7 +11,7 @@
 // 
 
 #include "myGlobal.h"
-int sharedID;
+int sharedID, semID;
 struct itimerval myTime;
 struct timeval child, start1;
 time_t t;
@@ -32,7 +32,16 @@ int main(int argc, char ** argv)
 	myTime.it_interval = myTime.it_value;
 	time_t method1, method2;
 	time(&t);
-	sem_t * mutex = sem_open(semaphoreName, O_CREAT|O_EXCL, 0666, 1000);
+	//sem_t * mutex = sem_open(semaphoreName, O_CREAT|O_EXCL, 0666, 1000);
+	semID = semget(1963,1,IPC_CREAT|0666);
+	semctl(semID, 0, SETVAL, 1);
+	SetSemID(semID);	
+	if(semID == -1)
+	{
+		perror("master, semaphore error\n");
+		exit(1);
+	}
+	//printf("semID %d\n",semID);
 	//sem_unlink(semaphoreName);
 	//clear the output file
 	
@@ -68,8 +77,8 @@ int main(int argc, char ** argv)
 
 
 	time(&method2);
-	printf("Start Method2 at %s \n", ctime(&method2));
-	int binSize = ceil(numElem/(log10(numElem)/log10(2)));
+	printf("\nStart Method2 at %s \n", ctime(&method2));
+	int binSize = ceil(numElem / (log2(numElem)));
 	ResetNumbers(numElem);
 	
 	gettimeofday(&start2, NULL);
@@ -82,25 +91,23 @@ int main(int argc, char ** argv)
 	three = (double)(stop2.tv_usec - start2.tv_usec)/1000000;
 	four = (double)(stop2.tv_sec - start2.tv_sec);
 
-
-
-	
-
 	//printf("Method 1 Summation %d completed in %f seconds\n",method1Summation,difftime(method2,method1));
 	//printf("Method 2 Summation %d completed in %f seconds\n",method2Summation,difftime(endMethod,method2));
 	one = one + two;
 	three = three + four;
 	printf("Method 1 Summation %d completed in %f seconds\n",method1Summation, one);
-	printf("Method 2 Summation %d complated in %f seconds\n",method2Summation, three);
+	printf("Method 2 Summation %d completed in %f seconds\n",method2Summation, three);
 
 	
-	if(shmctl(sharedID, IPC_RMID, NULL) < 0)
+	if(shmctl(sharedID, IPC_RMID, NULL)< 0)
 		fprintf(stderr, "Shared memory was not deallocated: remove it manually\n");
 	
 	remove(sharedIDFile);
 	remove(inputFile);
-	sem_destroy(mutex);	
-	sem_unlink(semaphoreName);
+	//sem_destroy(mutex);
+		
+	if((semctl(semID, 0, IPC_RMID)) < 0)
+		fprintf(stderr, "Semaphore array was not deallocated: remove it manually\n");
 	return 0;
 }
 
@@ -109,6 +116,7 @@ void PrintArray(int size)
 	sharedID = GetSharedIDFromFile();
         arr = (int*)shmat(sharedID, NULL, 0);
         int x = 0;
+	printf("Print Array\n");
         for(x = 0; x < size; x++)
         {
                 printf("%d ", arr[x]);
@@ -148,11 +156,16 @@ void CatchSignal(int sig)
 		printf("Time has expired\n");
 	}
 	int i = 0;
-	sem_close(mutex);
-	sem_destroy(mutex);
-	sem_unlink(semaphoreName);
 	
-	shmctl(sharedID, IPC_RMID, NULL);
+        if(shmctl(sharedID, IPC_RMID, NULL)< 0)
+                fprintf(stderr, "Shared memory was not deallocated: remove it manually\n");
+
+        remove(sharedIDFile);
+        remove(inputFile);
+            
+        if((semctl(semID, 0, IPC_RMID)) < 0)
+        	fprintf(stderr, "Semaphore array was not deallocated: remove it manually\n");
+      
 	for(i = 0; i < 20; i++)
 		kill(pids[i], SIGKILL);
 	kill(getpid(), SIGKILL);
@@ -395,7 +408,7 @@ int GetInputPlaceInSharedMem(int num)
 	//int shmid = shmget(key, (num + 2) * sizeof(int), 0666|IPC_CREAT);
 	int shmid = shmget(key, (num+2)*  sizeof(int), 0666|IPC_CREAT);
 	
-	printf("print shmid %d\n", shmid);
+	//printf("print shmid %d\n", shmid);
 	arr = (int*) shmat(shmid,NULL ,0);
 	arr[0] = 0;
 	FILE * fptr;
@@ -422,21 +435,26 @@ int GetInputPlaceInSharedMem(int num)
 
 void SetSharedID(int num)
 {
-
 	FILE * fptr;
 	if((fptr = fopen(sharedIDFile, "w")) == NULL)
 	{
 		perror("file problems\n");
 		exit(1);
 	}
-	
 	fprintf(fptr, "%d",num);
 	fclose(fptr);
-
-
-
 }
-
+void SetSemID(int num)
+{
+	FILE * fptr;
+	if((fptr = fopen(semIDFile, "w")) == NULL)
+	{
+		perror("semaphore file problems\n");
+		exit(1);
+	}
+	fprintf(fptr, "%d", num);
+	fclose(fptr);
+}
 void ResetNumbers(int num)
 {
 	int i = 0;
