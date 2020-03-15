@@ -1,0 +1,29 @@
+Logs
+3/8/2020 
+	Created random number joint
+	did the makefile
+	setup some constants for the sharedmem
+3/8/2020
+	my exec wasn't working becuase I didnt end the array with NULL
+3/9/2020
+	changed the makefile, thought we needed a static library
+	working on the bin adder algorithm
+3/10/2020
+	still working on the algorithm
+3/10/2020
+	got the first mehtod working as performsummation
+3/11/2020
+	seperated the perform summation into two methods, where two can call one
+3/11/2020
+	method one possibly complete, working on method 2
+3/11/2020
+	created some helper functions to just reuse the shared memory id, and reset the array for method two to run 
+3/12/2020
+	need to work on the time keeping
+3/12/2020
+	my appending may be wrong
+	interrupt signal works, killing child processes, as well as removing semaphore and shared mem id.
+	I think that shouldnt be assumed and mentioned in the documentation requirements.
+3/12/2020
+	in the final stages, I need to add the if debug code, so program doesn't have to sleep to compare times.
+	unfortunately I do not remember that from class, will be asking dr. Bhatia.

@@ -13,7 +13,7 @@
 #include "myGlobal.h"
 int sharedID;
 struct itimerval myTime;
-struct timerval start;
+struct timeval child, start1;
 time_t t;
 int main(int argc, char ** argv)
 {
@@ -21,7 +21,8 @@ int main(int argc, char ** argv)
 	int method1Summation = 0;
 	int method2Summation = 0;
 	
-	struct timeval stop, start;
+	struct timeval stop1, start2, stop2;
+	double one,two,three,four;
 	
 		
 	signal(SIGALRM, CatchSignal);
@@ -29,9 +30,10 @@ int main(int argc, char ** argv)
 	myTime.it_value.tv_sec = 100;
 	myTime.it_value.tv_usec = 0;
 	myTime.it_interval = myTime.it_value;
-	time_t method1, method2,endMethod;
+	time_t method1, method2;
 	time(&t);
 	sem_t * mutex = sem_open(semaphoreName, O_CREAT|O_EXCL, 0666, 1000);
+	//sem_unlink(semaphoreName);
 	//clear the output file
 	
 	FILE * fptr;	
@@ -43,38 +45,53 @@ int main(int argc, char ** argv)
 		numElem = ReadArgument(argv[1]);
 	}
 	else
-		numElem = 8;
+		numElem = 64;
 
 	GenerateRandomNumbers(numElem);
 	ReadInputFile();
-
+	time(&method1);
 	printf("Start Method1 at %s \n", ctime(&method1));
 	
 	sharedID = GetInputPlaceInSharedMem(numElem);
 	SetSharedID(sharedID);
 	
 	setitimer(ITIMER_REAL, &myTime, NULL);
-	time(&method1);
+
+	gettimeofday(&start1, NULL);
 	MethodOne(numElem,2); //method 1;
 	method1Summation = GetBinZero();
+	gettimeofday(&stop1, NULL);
 	
+	one = (double)(stop1.tv_usec - start1.tv_usec)/ 1000000;
+	two = (double)(stop1.tv_sec - start1.tv_sec);
 
 
 
+	time(&method2);
 	printf("Start Method2 at %s \n", ctime(&method2));
 	int binSize = ceil(numElem/(log10(numElem)/log10(2)));
 	ResetNumbers(numElem);
-	time(&method2);
+	
+	gettimeofday(&start2, NULL);
 	MethodTwo(numElem, binSize);
-	time(&endMethod);
+	gettimeofday(&stop2, NULL);
+
 	method2Summation = GetBinZero();
 	
 
+	three = (double)(stop2.tv_usec - start2.tv_usec)/1000000;
+	four = (double)(stop2.tv_sec - start2.tv_sec);
 
 
 
-	printf("Method 1 Summation %d completed in %f seconds\n",method1Summation,difftime(method2,method1));
-	printf("Method 2 Summation %d completed in %f seconds\n",method2Summation,difftime(endMethod,method2));
+	
+
+	//printf("Method 1 Summation %d completed in %f seconds\n",method1Summation,difftime(method2,method1));
+	//printf("Method 2 Summation %d completed in %f seconds\n",method2Summation,difftime(endMethod,method2));
+	one = one + two;
+	three = three + four;
+	printf("Method 1 Summation %d completed in %f seconds\n",method1Summation, one);
+	printf("Method 2 Summation %d complated in %f seconds\n",method2Summation, three);
 
 	
 	if(shmctl(sharedID, IPC_RMID, NULL) < 0)
@@ -83,6 +100,7 @@ int main(int argc, char ** argv)
 	remove(sharedIDFile);
 	remove(inputFile);
 	sem_destroy(mutex);	
+	sem_unlink(semaphoreName);
 	return 0;
 }
 
@@ -109,11 +127,12 @@ int ReadArgument(char * str)
 
 void UpdateTime()
 {
-	time_t childTime;
-	time(&childTime);
+
+	gettimeofday(&child, NULL);
 	sharedID = GetSharedIDFromFile();
 	arr = (int*)shmat(sharedID, NULL, 0);
-	arr[0] = difftime(childTime, t);
+	arr[0] = (double)(child.tv_sec-start1.tv_sec);
+	arr[1] = (double)(child.tv_usec-start1.tv_usec);
 	shmdt(arr);
 
 }
@@ -130,6 +149,9 @@ void CatchSignal(int sig)
 	}
 	int i = 0;
 	sem_close(mutex);
+	sem_destroy(mutex);
+	sem_unlink(semaphoreName);
+	
 	shmctl(sharedID, IPC_RMID, NULL);
 	for(i = 0; i < 20; i++)
 		kill(pids[i], SIGKILL);

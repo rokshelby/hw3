@@ -23,43 +23,53 @@ int main(int argc, char ** argv)
 	arr[index + 2] = total;
 
 	shmdt(arr);
-	sem_t *mutex = sem_open(semaphoreName, O_EXCL, 0666, 1000);		
-
+	mutex = sem_open(semaphoreName, O_EXCL, 0666, 1000);		
+	double timeVar = 0;
 	i = 0;
 	int exitFlag = 0;
 	for(i = 0; i < 5 && exitFlag == 0; i++)
 	{
-		waitRandom();
-
+	
 		#ifdef NOTIMETEST
-		arr = (int*)shmat(sharedID, NULL, 0);
-		fprintf(stderr, "Pid %d is requesting to enter critical section at clock %d seconds \n", getpid(), arr[0]);
-		shmdt(arr);
+		waitRandom();
 		#endif
+
+		arr = (int*)shmat(sharedID, NULL, 0);
+		timeVar = arr[0] + arr[1]/1000000.0;	
+		fprintf(stderr, "Pid %d is requesting to enter critical section at clock %f seconds \n", getpid(), timeVar);
+		shmdt(arr);
 
 		sem_wait(mutex);
-		sleep(1);
+		
+		arr = (int*)shmat(sharedID, NULL, 0);
+		timeVar = arr[0] + arr[1]/1000000.0;
+		fprintf(stderr, "Pid %d is in critical section at clock %f seconds  \n", getpid(), timeVar);
+		shmdt(arr);
 
+
+		//CRITICAL SECTION
 		#ifdef NOTIMETEST
-		arr = (int*)shmat(sharedID, NULL, 0);
-		fprintf(stderr, "Pid %d is in critical section at clock %d seconds  \n", getpid(), arr[0]);
-		shmdt(arr);
+		sleep(1);	
 		#endif
-		
 		writeFile(size, index, total);
+		#ifdef NOTTIMETEST
+		sleep(1);	
+		#endif
 		exitFlag = 1;	
-		#ifdef NOTIMETEST
+		//CRITICAL SECTION
+
+
 		arr = (int*)shmat(sharedID, NULL, 0);
-		fprintf(stderr, "Pid %d is exiting critical section at clock %d seconds \n", getpid(), arr[0]);
+		timeVar = arr[0] + arr[1]/1000000.0;
+		fprintf(stderr, "Pid %d is exiting critical section at clock %f seconds \n", getpid(), timeVar);
 		shmdt(arr);
-		#endif	
-		
+		sem_post(mutex);			
 		
 		
 	}	
 	exitFlag = 0;
 		
-	sem_close(mutex);	
+		
 	return 0;
 }
 int GetSharedIDFromFile()
@@ -89,9 +99,13 @@ void writeFile(int size, int index, int total)
 
 void waitRandom()
 {
-	srand(time(0));
+	struct timeval t1;
+	gettimeofday(&t1, NULL);
+	srand(t1.tv_usec * t1.tv_sec);
 	int sleepTime = 0;
-	sleepTime = rand() % 4;
+	sleepTime = (rand() % 3)+1;
+	printf("Sleep duration %d\n",sleepTime);
 	sleep(sleepTime);
+	
 }
 
