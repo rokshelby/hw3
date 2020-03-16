@@ -18,22 +18,39 @@ time_t t;
 int main(int argc, char ** argv)
 {
 	int numElem;
+	int intervalTime;
 	int method1Summation = 0;
 	int method2Summation = 0;
 	
 	struct timeval stop1, start2, stop2;
 	double one,two,three,four;
+
+	if(argc > 2)
+	{
+		numElem = ReadArgument(argv[1]);
+		intervalTime = ReadArgument(argv[2]);
+	}
+        else if(argc > 1)
+        {
+                numElem = ReadArgument(argv[1]);
+		intervalTime = 100;
+        }
+        else
+	{
+                numElem = 64;
+		intervalTime = 100;
+	}
 	
-		
 	signal(SIGALRM, CatchSignal);
 	signal(SIGINT, CatchSignal);
-	myTime.it_value.tv_sec = 100;
+	myTime.it_value.tv_sec = intervalTime;
 	myTime.it_value.tv_usec = 0;
 	myTime.it_interval = myTime.it_value;
 	time_t method1, method2;
 	time(&t);
 	//sem_t * mutex = sem_open(semaphoreName, O_CREAT|O_EXCL, 0666, 1000);
 	semID = semget(1963,1,IPC_CREAT|0666);
+	printf("semID %d\n", semID);
 	semctl(semID, 0, SETVAL, 1);
 	SetSemID(semID);	
 	if(semID == -1)
@@ -98,16 +115,21 @@ int main(int argc, char ** argv)
 	printf("Method 1 Summation %d completed in %f seconds\n",method1Summation, one);
 	printf("Method 2 Summation %d completed in %f seconds\n",method2Summation, three);
 
-	
+	sharedID = GetSharedIDFromFile();	
 	if(shmctl(sharedID, IPC_RMID, NULL)< 0)
 		fprintf(stderr, "Shared memory was not deallocated: remove it manually\n");
 	
-	remove(sharedIDFile);
-	remove(inputFile);
+	
 	//sem_destroy(mutex);
-		
+	semID = GetSemIDFromFile();	
 	if((semctl(semID, 0, IPC_RMID)) < 0)
 		fprintf(stderr, "Semaphore array was not deallocated: remove it manually\n");
+
+
+
+	remove(sharedIDFile);
+	remove(semIDFile);
+	remove(inputFile);
 	return 0;
 }
 
@@ -161,6 +183,7 @@ void CatchSignal(int sig)
                 fprintf(stderr, "Shared memory was not deallocated: remove it manually\n");
 
         remove(sharedIDFile);
+	remove(semIDFile);
         remove(inputFile);
             
         if((semctl(semID, 0, IPC_RMID)) < 0)
@@ -388,17 +411,6 @@ void RelaxTheCells(int bins, int binSize)
 	shmdt(arr);
 }
 
-int GetSharedIDFromFile()
-{
-        FILE * fptr;
-        int num = 0;
-        fptr = fopen(sharedIDFile, "r");
-        fscanf(fptr,"%d", &num);
-	fclose(fptr);
-        return num;
-}
-
-
 int GetInputPlaceInSharedMem(int num)
 {
 	int ret = 0;
@@ -477,6 +489,24 @@ void ResetNumbers(int num)
 
 }
 
+int GetSharedIDFromFile()
+{
+        FILE * fptr;
+        int num = 0;
+        fptr = fopen(sharedIDFile, "r");
+        fscanf(fptr,"%d", &num);
+        fclose(fptr);
+        return num;
+}
+int GetSemIDFromFile()
+{
+        FILE * fptr;
+        int num = 0;
+        fptr = fopen(semIDFile, "r");
+        fscanf(fptr, "%d", &num);
+        fclose(fptr);
+        return num;
+}
 
 
 int ReadInputFile()
