@@ -1,6 +1,6 @@
 //rakeem shelby
 //hw 3
-//edited on march 5, 2020
+//last edited on march 15, 2020
 //the program will have a statically linked library
 //it will compute the summation of n integers in two different ways
 //the use of semaphores willl be used to protect the critical resources
